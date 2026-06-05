@@ -17,6 +17,7 @@ export const Route = createFileRoute("/")({
 function MuralStudio() {
   const generate = useServerFn(generateMurals);
   const [artwork, setArtwork] = useState<string | null>(null);
+  const [wall, setWall] = useState<string | null>(null);
   const [murals, setMurals] = useState<Mural[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [revealOpen, setRevealOpen] = useState(false);
@@ -25,7 +26,7 @@ function MuralStudio() {
   const mutation = useMutation({
     mutationFn: async (variant: "base" | "retry") => {
       if (!artwork) throw new Error("no artwork");
-      return generate({ data: { artworkDataUrl: artwork, variant } });
+      return generate({ data: { artworkDataUrl: artwork, wallDataUrl: wall, variant } });
     },
     onSuccess: (data, variant) => {
       setMurals(data.murals);
@@ -92,8 +93,14 @@ function MuralStudio() {
         <section>
           <UploadZone
             artworkUrl={artwork}
+            wallUrl={wall}
             onArtwork={(d) => {
               setArtwork(d);
+              setMurals(null);
+              setSelected(null);
+            }}
+            onWall={(d) => {
+              setWall(d);
               setMurals(null);
               setSelected(null);
             }}
