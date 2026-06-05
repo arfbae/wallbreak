@@ -4,12 +4,23 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   artworkUrl: string | null;
+  wallUrl: string | null;
   onArtwork: (dataUrl: string) => void;
+  onWall: (dataUrl: string) => void;
   onGenerate: () => void;
   isGenerating: boolean;
 }
 
-export function UploadZone({ artworkUrl, onArtwork, onGenerate, isGenerating }: Props) {
+interface DropBoxProps {
+  imageUrl: string | null;
+  onFile: (dataUrl: string) => void;
+  stepLabel: string;
+  title: string;
+  placeholderTitle: string;
+  hint: string;
+}
+
+function DropBox({ imageUrl, onFile, stepLabel, title, placeholderTitle, hint }: DropBoxProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
 
@@ -18,75 +29,105 @@ export function UploadZone({ artworkUrl, onArtwork, onGenerate, isGenerating }: 
       if (!file.type.startsWith("image/")) return;
       const reader = new FileReader();
       reader.onload = () => {
-        if (typeof reader.result === "string") onArtwork(reader.result);
+        if (typeof reader.result === "string") onFile(reader.result);
       };
       reader.readAsDataURL(file);
     },
-    [onArtwork],
+    [onFile],
   );
 
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-stretch">
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDrag(true);
-        }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDrag(false);
-          const f = e.dataTransfer.files?.[0];
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDrag(true);
+      }}
+      onDragLeave={() => setDrag(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDrag(false);
+        const f = e.dataTransfer.files?.[0];
+        if (f) handleFile(f);
+      }}
+      onClick={() => inputRef.current?.click()}
+      className={cn(
+        "group relative flex h-40 flex-1 cursor-pointer items-center gap-4 rounded-2xl border border-dashed px-5 transition-all",
+        drag
+          ? "border-[var(--studio-accent)] bg-white/5"
+          : "border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.04]",
+      )}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
           if (f) handleFile(f);
         }}
-        onClick={() => inputRef.current?.click()}
-        className={cn(
-          "group relative flex h-40 w-full cursor-pointer items-center gap-4 rounded-2xl border border-dashed px-5 transition-all md:w-[420px]",
-          drag
-            ? "border-[var(--studio-accent)] bg-white/5"
-            : "border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.04]",
-        )}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) handleFile(f);
-          }}
+      />
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={title}
+          className="h-32 w-32 rounded-xl object-cover ring-1 ring-white/10"
         />
-        {artworkUrl ? (
-          <img
-            src={artworkUrl}
-            alt="Source artwork"
-            className="h-32 w-32 rounded-xl object-cover ring-1 ring-white/10"
-          />
-        ) : (
-          <div className="flex h-32 w-32 items-center justify-center rounded-xl bg-white/[0.03] ring-1 ring-white/10">
-            <ImageIcon className="h-7 w-7 text-white/30" />
-          </div>
-        )}
-        <div className="flex-1">
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
-            01 · Source
-          </div>
-          <div className="mt-1 font-display text-lg leading-tight text-white">
-            {artworkUrl ? "Artwork loaded" : "Drop artwork"}
-          </div>
-          <div className="mt-1 text-xs text-white/50">
-            {artworkUrl ? "Click to replace · PNG / JPG" : "or click to browse"}
-          </div>
+      ) : (
+        <div className="flex h-32 w-32 items-center justify-center rounded-xl bg-white/[0.03] ring-1 ring-white/10">
+          <ImageIcon className="h-7 w-7 text-white/30" />
         </div>
-        <Upload className="h-5 w-5 text-white/40 transition-transform group-hover:translate-y-[-2px]" />
+      )}
+      <div className="flex-1">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+          {stepLabel}
+        </div>
+        <div className="mt-1 font-display text-lg leading-tight text-white">
+          {imageUrl ? title : placeholderTitle}
+        </div>
+        <div className="mt-1 text-xs text-white/50">
+          {imageUrl ? "Click to replace · PNG / JPG" : hint}
+        </div>
+      </div>
+      <Upload className="h-5 w-5 text-white/40 transition-transform group-hover:translate-y-[-2px]" />
+    </div>
+  );
+}
+
+export function UploadZone({
+  artworkUrl,
+  wallUrl,
+  onArtwork,
+  onWall,
+  onGenerate,
+  isGenerating,
+}: Props) {
+  return (
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+      <div className="flex flex-1 flex-col gap-4 md:flex-row">
+        <DropBox
+          imageUrl={artworkUrl}
+          onFile={onArtwork}
+          stepLabel="01 · Artwork"
+          title="Artwork loaded"
+          placeholderTitle="Drop artwork"
+          hint="or click to browse"
+        />
+        <DropBox
+          imageUrl={wallUrl}
+          onFile={onWall}
+          stepLabel="02 · Wall (optional)"
+          title="Wall loaded"
+          placeholderTitle="Drop wall image"
+          hint="background for all 3 mockups"
+        />
       </div>
 
       <button
         onClick={onGenerate}
         disabled={!artworkUrl || isGenerating}
         className={cn(
-          "relative flex h-40 flex-1 items-center justify-center overflow-hidden rounded-2xl border px-8 font-display text-2xl tracking-tight transition-all",
+          "relative flex h-40 items-center justify-center overflow-hidden rounded-2xl border px-8 font-display text-2xl tracking-tight transition-all lg:w-[320px]",
           !artworkUrl || isGenerating
             ? "cursor-not-allowed border-white/10 bg-white/[0.02] text-white/30"
             : "cursor-pointer border-[var(--studio-accent)]/40 bg-gradient-to-br from-[var(--studio-accent)]/20 to-[var(--studio-accent-2)]/10 text-white hover:from-[var(--studio-accent)]/30 hover:to-[var(--studio-accent-2)]/20",
@@ -94,7 +135,7 @@ export function UploadZone({ artworkUrl, onArtwork, onGenerate, isGenerating }: 
       >
         <div className="flex flex-col items-center gap-2">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/50">
-            02 · Render Pipeline
+            03 · Render Pipeline
           </div>
           <div>{isGenerating ? "Rendering 3 mockups…" : "Generate Triptych"}</div>
           <div className="font-mono text-[10px] tracking-wider text-white/40">
