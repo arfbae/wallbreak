@@ -105,6 +105,9 @@ export function MuralTriptych({ murals, isGenerating, selected, onSelect, retryN
               </div>
             </div>
 
+            {/* Debug overlay */}
+            {showDebug && <DebugOverlay sceneId={m.id} />}
+
             {/* Hover scrim */}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20 opacity-100" />
           </motion.button>
