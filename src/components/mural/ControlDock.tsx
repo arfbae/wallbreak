@@ -21,6 +21,8 @@ export function ControlDock({
   onReveal,
   isGenerating,
   muralIds,
+  showDebug,
+  onToggleDebug,
 }: Props) {
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4 backdrop-blur-md md:flex-row md:items-center md:justify-between">
