@@ -185,7 +185,6 @@ export function DebugOverlay({ sceneId }: { sceneId: string }) {
       {/* Labels via foreignObject for crisp text */}
       <foreignObject x="2" y="2" width="96" height="10">
         <div
-          xmlns="http://www.w3.org/1999/xhtml"
           style={{
             display: "flex",
             gap: 6,
