@@ -128,6 +128,7 @@ function MuralStudio() {
             selected={selected}
             onSelect={setSelected}
             retryNonce={retryNonce}
+            showDebug={showDebug}
           />
         </section>
 
@@ -141,6 +142,8 @@ function MuralStudio() {
             onReveal={() => setRevealOpen(true)}
             isGenerating={mutation.isPending}
             muralIds={muralIds}
+            showDebug={showDebug}
+            onToggleDebug={() => setShowDebug((v) => !v)}
           />
         </section>
 
