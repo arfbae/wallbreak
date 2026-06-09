@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DebugOverlay } from "./DebugOverlay";
 
 export type Mural = {
   id: string;
@@ -15,6 +16,7 @@ interface Props {
   selected: string | null;
   onSelect: (id: string) => void;
   retryNonce: number;
+  showDebug?: boolean;
 }
 
 const PLACEHOLDER_SCENES = [
