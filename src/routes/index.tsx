@@ -22,6 +22,7 @@ function MuralStudio() {
   const [selected, setSelected] = useState<string | null>(null);
   const [revealOpen, setRevealOpen] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
+  const [showDebug, setShowDebug] = useState(false);
 
   const mutation = useMutation({
     mutationFn: async (variant: "base" | "retry") => {
@@ -127,6 +128,7 @@ function MuralStudio() {
             selected={selected}
             onSelect={setSelected}
             retryNonce={retryNonce}
+            showDebug={showDebug}
           />
         </section>
 
@@ -140,6 +142,8 @@ function MuralStudio() {
             onReveal={() => setRevealOpen(true)}
             isGenerating={mutation.isPending}
             muralIds={muralIds}
+            showDebug={showDebug}
+            onToggleDebug={() => setShowDebug((v) => !v)}
           />
         </section>
 

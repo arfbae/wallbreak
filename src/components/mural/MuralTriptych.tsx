@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DebugOverlay } from "./DebugOverlay";
 
 export type Mural = {
   id: string;
@@ -15,6 +16,7 @@ interface Props {
   selected: string | null;
   onSelect: (id: string) => void;
   retryNonce: number;
+  showDebug?: boolean;
 }
 
 const PLACEHOLDER_SCENES = [
@@ -23,7 +25,7 @@ const PLACEHOLDER_SCENES = [
   { id: "concrete", name: "Obstructed Concrete Facade" },
 ];
 
-export function MuralTriptych({ murals, isGenerating, selected, onSelect, retryNonce }: Props) {
+export function MuralTriptych({ murals, isGenerating, selected, onSelect, retryNonce, showDebug }: Props) {
   const slots = murals ?? PLACEHOLDER_SCENES.map((s) => ({ ...s, imageUrl: null }));
 
   return (
@@ -102,6 +104,9 @@ export function MuralTriptych({ murals, isGenerating, selected, onSelect, retryN
                 </div>
               </div>
             </div>
+
+            {/* Debug overlay */}
+            {showDebug && <DebugOverlay sceneId={m.id} />}
 
             {/* Hover scrim */}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20 opacity-100" />

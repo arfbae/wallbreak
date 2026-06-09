@@ -1,4 +1,4 @@
-import { RefreshCw, Play } from "lucide-react";
+import { RefreshCw, Play, Crosshair } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -9,6 +9,8 @@ interface Props {
   onReveal: () => void;
   isGenerating: boolean;
   muralIds: string[];
+  showDebug: boolean;
+  onToggleDebug: () => void;
 }
 
 export function ControlDock({
@@ -19,6 +21,8 @@ export function ControlDock({
   onReveal,
   isGenerating,
   muralIds,
+  showDebug,
+  onToggleDebug,
 }: Props) {
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4 backdrop-blur-md md:flex-row md:items-center md:justify-between">
@@ -52,6 +56,21 @@ export function ControlDock({
       </div>
 
       <div className="flex gap-2">
+        <button
+          onClick={onToggleDebug}
+          disabled={!hasMurals}
+          className={cn(
+            "flex h-10 items-center gap-2 rounded-lg border px-4 font-mono text-xs uppercase tracking-[0.15em] transition-all",
+            !hasMurals
+              ? "cursor-not-allowed border-white/5 text-white/20"
+              : showDebug
+                ? "border-[var(--studio-accent)]/60 bg-[var(--studio-accent)]/15 text-[var(--studio-accent)]"
+                : "border-white/15 bg-white/[0.04] text-white/80 hover:border-white/30 hover:bg-white/10",
+          )}
+        >
+          <Crosshair className="h-3.5 w-3.5" />
+          Align Debug
+        </button>
         <button
           onClick={onRetry}
           disabled={!hasMurals || isGenerating}
