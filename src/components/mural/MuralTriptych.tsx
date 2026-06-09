@@ -25,7 +25,7 @@ const PLACEHOLDER_SCENES = [
   { id: "concrete", name: "Obstructed Concrete Facade" },
 ];
 
-export function MuralTriptych({ murals, isGenerating, selected, onSelect, retryNonce }: Props) {
+export function MuralTriptych({ murals, isGenerating, selected, onSelect, retryNonce, showDebug }: Props) {
   const slots = murals ?? PLACEHOLDER_SCENES.map((s) => ({ ...s, imageUrl: null }));
 
   return (
