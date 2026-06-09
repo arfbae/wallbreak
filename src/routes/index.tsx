@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast, Toaster } from "sonner";
 
 import { generateMurals } from "@/lib/mural.functions";
@@ -9,6 +9,7 @@ import { UploadZone } from "@/components/mural/UploadZone";
 import { MuralTriptych, type Mural } from "@/components/mural/MuralTriptych";
 import { ControlDock } from "@/components/mural/ControlDock";
 import { CinematicReveal } from "@/components/mural/CinematicReveal";
+import { ApiKeyField, loadStoredApiKey } from "@/components/mural/ApiKeyField";
 
 export const Route = createFileRoute("/")({
   component: MuralStudio,
@@ -23,11 +24,18 @@ function MuralStudio() {
   const [revealOpen, setRevealOpen] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+
+  useEffect(() => {
+    setApiKey(loadStoredApiKey());
+  }, []);
 
   const mutation = useMutation({
     mutationFn: async (variant: "base" | "retry") => {
       if (!artwork) throw new Error("no artwork");
-      return generate({ data: { artworkDataUrl: artwork, wallDataUrl: wall, variant } });
+      return generate({
+        data: { artworkDataUrl: artwork, wallDataUrl: wall, variant, apiKey: apiKey || null },
+      });
     },
     onSuccess: (data, variant) => {
       setMurals(data.murals);
@@ -83,10 +91,13 @@ function MuralStudio() {
               Mural Mockup <span className="text-[var(--studio-accent)]">Studio</span>
             </h1>
           </div>
-          <div className="hidden text-right font-mono text-[10px] uppercase leading-relaxed tracking-[0.18em] text-white/40 md:block">
-            <div>KEY 1200W · FILL 500W · RIM 700W</div>
-            <div>ELEVATION 15° · OPACITY 95%</div>
-            <div>SUBSTRATE MAPPING · ENABLED</div>
+          <div className="flex items-center gap-4">
+            <ApiKeyField value={apiKey} onChange={setApiKey} />
+            <div className="hidden text-right font-mono text-[10px] uppercase leading-relaxed tracking-[0.18em] text-white/40 lg:block">
+              <div>KEY 1200W · FILL 500W · RIM 700W</div>
+              <div>ELEVATION 15° · OPACITY 95%</div>
+              <div>SUBSTRATE MAPPING · ENABLED</div>
+            </div>
           </div>
         </header>
 
