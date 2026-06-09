@@ -56,10 +56,11 @@ async function generateOne(
   artworkDataUrl: string,
   wallDataUrl: string | null,
   variant: "base" | "retry",
+  userApiKey: string | null,
 ): Promise<{ id: Scene["id"]; name: string; imageUrl: string | null; error?: string }> {
-  const apiKey = process.env.LOVABLE_API_KEY;
+  const apiKey = userApiKey || process.env.LOVABLE_API_KEY;
   if (!apiKey) {
-    return { id: scene.id, name: scene.name, imageUrl: null, error: "LOVABLE_API_KEY not configured" };
+    return { id: scene.id, name: scene.name, imageUrl: null, error: "No API key — add one in the UI or configure LOVABLE_API_KEY" };
   }
 
   const scenePrompt = wallDataUrl
@@ -127,6 +128,7 @@ export const generateMurals = createServerFn({ method: "POST" })
       artworkDataUrl: string;
       wallDataUrl?: string | null;
       variant?: "base" | "retry";
+      apiKey?: string | null;
     }) => {
       if (!input?.artworkDataUrl || typeof input.artworkDataUrl !== "string") {
         throw new Error("artworkDataUrl required");
@@ -137,16 +139,20 @@ export const generateMurals = createServerFn({ method: "POST" })
       if (input.wallDataUrl && !input.wallDataUrl.startsWith("data:image/")) {
         throw new Error("wallDataUrl must be a data:image/* URL");
       }
+      const apiKey = typeof input.apiKey === "string" ? input.apiKey.trim() : "";
       return {
         artworkDataUrl: input.artworkDataUrl,
         wallDataUrl: input.wallDataUrl ?? null,
         variant: input.variant ?? "base",
+        apiKey: apiKey || null,
       };
     },
   )
   .handler(async ({ data }) => {
     const results = await Promise.all(
-      SCENES.map((s) => generateOne(s, data.artworkDataUrl, data.wallDataUrl, data.variant)),
+      SCENES.map((s) =>
+        generateOne(s, data.artworkDataUrl, data.wallDataUrl, data.variant, data.apiKey),
+      ),
     );
     return { murals: results };
   });
