@@ -29,7 +29,7 @@ export default defineTool({
       .describe("Number of mockup scenes to render (1-3)."),
   },
   annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: true },
-  handler: async ({ artworkUrl, wallUrl, variant }) => {
+  handler: async ({ artworkUrl, wallUrl, variant, count }) => {
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) {
       return {
