@@ -143,6 +143,7 @@ function MuralStudio() {
             onSelect={setSelected}
             retryNonce={retryNonce}
             showDebug={showDebug}
+            count={count}
           />
         </section>
 
