@@ -55,7 +55,7 @@ export default defineTool({
 
     const { generateMurals } = await import("@/lib/mural.functions");
     const result = await generateMurals({
-      data: { artworkDataUrl, wallDataUrl, variant, apiKey: null },
+      data: { artworkDataUrl, wallDataUrl, variant, apiKey: null, count },
     });
 
     return {
