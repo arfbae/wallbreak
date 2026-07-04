@@ -119,6 +119,8 @@ function MuralStudio() {
             }}
             onGenerate={() => mutation.mutate("base")}
             isGenerating={mutation.isPending}
+            count={count}
+            onCountChange={setCount}
           />
         </section>
 
