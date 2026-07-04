@@ -9,6 +9,8 @@ interface Props {
   onWall: (dataUrl: string) => void;
   onGenerate: () => void;
   isGenerating: boolean;
+  count: 1 | 2 | 3;
+  onCountChange: (count: 1 | 2 | 3) => void;
 }
 
 interface DropBoxProps {
