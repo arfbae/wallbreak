@@ -25,6 +25,7 @@ function MuralStudio() {
   const [retryNonce, setRetryNonce] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
   const [apiKey, setApiKey] = useState("");
+  const [count, setCount] = useState<1 | 2 | 3>(3);
 
   useEffect(() => {
     setApiKey(loadStoredApiKey());
