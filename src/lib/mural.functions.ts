@@ -129,6 +129,7 @@ export const generateMurals = createServerFn({ method: "POST" })
       wallDataUrl?: string | null;
       variant?: "base" | "retry";
       apiKey?: string | null;
+      count?: number;
     }) => {
       if (!input?.artworkDataUrl || typeof input.artworkDataUrl !== "string") {
         throw new Error("artworkDataUrl required");
@@ -140,17 +141,21 @@ export const generateMurals = createServerFn({ method: "POST" })
         throw new Error("wallDataUrl must be a data:image/* URL");
       }
       const apiKey = typeof input.apiKey === "string" ? input.apiKey.trim() : "";
+      const rawCount = typeof input.count === "number" ? Math.floor(input.count) : 3;
+      const count = Math.max(1, Math.min(3, rawCount));
       return {
         artworkDataUrl: input.artworkDataUrl,
         wallDataUrl: input.wallDataUrl ?? null,
         variant: input.variant ?? "base",
         apiKey: apiKey || null,
+        count,
       };
     },
   )
   .handler(async ({ data }) => {
+    const scenes = SCENES.slice(0, data.count);
     const results = await Promise.all(
-      SCENES.map((s) =>
+      scenes.map((s) =>
         generateOne(s, data.artworkDataUrl, data.wallDataUrl, data.variant, data.apiKey),
       ),
     );
