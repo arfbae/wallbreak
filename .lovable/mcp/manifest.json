@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "mural-studio-mcp",
+      "version": "0.1.0",
+      "title": "Mural Studio MCP"
+    },
+    "tools": [
+      {
+        "name": "generate_mural_mockups",
+        "title": "Generate mural mockups",
+        "description": "Render 3 photorealistic mural mockups (frontal shipping container, angled brick corner, obstructed concrete facade) from an artwork image URL. Optionally composite the mural onto a provided wall photo.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "artworkUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "Public HTTPS URL of the artwork image to paint as a mural."
+            },
+            "wallUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "Optional public HTTPS URL of a wall photo to use as the background plate."
+            },
+            "variant": {
+              "type": "string",
+              "enum": [
+                "base",
+                "retry"
+              ],
+              "default": "base",
+              "description": "'base' for default composition, 'retry' to recompose lighting/angle."
+            }
+          },
+          "required": [
+            "artworkUrl"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
