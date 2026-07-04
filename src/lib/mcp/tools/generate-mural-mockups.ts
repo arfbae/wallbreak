@@ -20,6 +20,13 @@ export default defineTool({
       .enum(["base", "retry"])
       .default("base")
       .describe("'base' for default composition, 'retry' to recompose lighting/angle."),
+    count: z
+      .number()
+      .int()
+      .min(1)
+      .max(3)
+      .default(3)
+      .describe("Number of mockup scenes to render (1-3)."),
   },
   annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: true },
   handler: async ({ artworkUrl, wallUrl, variant }) => {
