@@ -9,6 +9,8 @@ interface Props {
   onWall: (dataUrl: string) => void;
   onGenerate: () => void;
   isGenerating: boolean;
+  count: 1 | 2 | 3;
+  onCountChange: (count: 1 | 2 | 3) => void;
 }
 
 interface DropBoxProps {
@@ -101,6 +103,8 @@ export function UploadZone({
   onWall,
   onGenerate,
   isGenerating,
+  count,
+  onCountChange,
 }: Props) {
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
@@ -119,35 +123,72 @@ export function UploadZone({
           stepLabel="02 · Wall (optional)"
           title="Wall loaded"
           placeholderTitle="Drop wall image"
-          hint="background for all 3 mockups"
+          hint="background for all mockups"
         />
       </div>
 
-      <button
-        onClick={onGenerate}
-        disabled={!artworkUrl || isGenerating}
-        className={cn(
-          "relative flex h-40 items-center justify-center overflow-hidden rounded-2xl border px-8 font-display text-2xl tracking-tight transition-all lg:w-[320px]",
-          !artworkUrl || isGenerating
-            ? "cursor-not-allowed border-white/10 bg-white/[0.02] text-white/30"
-            : "cursor-pointer border-[var(--studio-accent)]/40 bg-gradient-to-br from-[var(--studio-accent)]/20 to-[var(--studio-accent-2)]/10 text-white hover:from-[var(--studio-accent)]/30 hover:to-[var(--studio-accent-2)]/20",
-        )}
-      >
-        <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col gap-3 lg:w-[320px]">
+        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/50">
-            03 · Render Pipeline
+            Mockups
           </div>
-          <div>{isGenerating ? "Rendering 3 mockups…" : "Generate Triptych"}</div>
-          <div className="font-mono text-[10px] tracking-wider text-white/40">
-            3 SCENES · ~30S
+          <div className="flex gap-1 rounded-lg bg-black/30 p-1 ring-1 ring-white/5">
+            {[1, 2, 3].map((n) => {
+              const active = count === n;
+              return (
+                <button
+                  key={n}
+                  onClick={() => onCountChange(n as 1 | 2 | 3)}
+                  disabled={isGenerating}
+                  className={cn(
+                    "h-7 w-9 rounded-md font-mono text-xs transition-all",
+                    active
+                      ? "bg-[var(--studio-accent)] text-black"
+                      : "text-white/70 hover:bg-white/10 hover:text-white",
+                    isGenerating && "cursor-not-allowed opacity-40",
+                  )}
+                >
+                  {n}
+                </button>
+              );
+            })}
           </div>
         </div>
-        {isGenerating && (
-          <div className="absolute bottom-0 left-0 h-[2px] w-full overflow-hidden bg-white/5">
-            <div className="h-full w-1/3 animate-[slide_1.4s_ease-in-out_infinite] bg-[var(--studio-accent)]" />
+
+        <button
+          onClick={onGenerate}
+          disabled={!artworkUrl || isGenerating}
+          className={cn(
+            "relative flex flex-1 items-center justify-center overflow-hidden rounded-2xl border px-8 font-display text-2xl tracking-tight transition-all",
+            !artworkUrl || isGenerating
+              ? "cursor-not-allowed border-white/10 bg-white/[0.02] text-white/30"
+              : "cursor-pointer border-[var(--studio-accent)]/40 bg-gradient-to-br from-[var(--studio-accent)]/20 to-[var(--studio-accent-2)]/10 text-white hover:from-[var(--studio-accent)]/30 hover:to-[var(--studio-accent-2)]/20",
+          )}
+        >
+          <div className="flex flex-col items-center gap-2">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/50">
+              03 · Render Pipeline
+            </div>
+            <div>
+              {isGenerating
+                ? `Rendering ${count} mockup${count > 1 ? "s" : ""}…`
+                : count === 1
+                  ? "Generate Mockup"
+                  : count === 2
+                    ? "Generate Pair"
+                    : "Generate Triptych"}
+            </div>
+            <div className="font-mono text-[10px] tracking-wider text-white/40">
+              {count} SCENE{count > 1 ? "S" : ""} · ~{count * 10}S
+            </div>
           </div>
-        )}
-      </button>
+          {isGenerating && (
+            <div className="absolute bottom-0 left-0 h-[2px] w-full overflow-hidden bg-white/5">
+              <div className="h-full w-1/3 animate-[slide_1.4s_ease-in-out_infinite] bg-[var(--studio-accent)]" />
+            </div>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

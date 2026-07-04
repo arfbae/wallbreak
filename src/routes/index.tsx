@@ -25,6 +25,7 @@ function MuralStudio() {
   const [retryNonce, setRetryNonce] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
   const [apiKey, setApiKey] = useState("");
+  const [count, setCount] = useState<1 | 2 | 3>(3);
 
   useEffect(() => {
     setApiKey(loadStoredApiKey());
@@ -34,7 +35,7 @@ function MuralStudio() {
     mutationFn: async (variant: "base" | "retry") => {
       if (!artwork) throw new Error("no artwork");
       return generate({
-        data: { artworkDataUrl: artwork, wallDataUrl: wall, variant, apiKey: apiKey || null },
+        data: { artworkDataUrl: artwork, wallDataUrl: wall, variant, apiKey: apiKey || null, count },
       });
     },
     onSuccess: (data, variant) => {
@@ -118,6 +119,8 @@ function MuralStudio() {
             }}
             onGenerate={() => mutation.mutate("base")}
             isGenerating={mutation.isPending}
+            count={count}
+            onCountChange={setCount}
           />
         </section>
 
@@ -140,6 +143,7 @@ function MuralStudio() {
             onSelect={setSelected}
             retryNonce={retryNonce}
             showDebug={showDebug}
+            count={count}
           />
         </section>
 

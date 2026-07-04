@@ -17,6 +17,7 @@ interface Props {
   onSelect: (id: string) => void;
   retryNonce: number;
   showDebug?: boolean;
+  count?: 1 | 2 | 3;
 }
 
 const PLACEHOLDER_SCENES = [
@@ -25,11 +26,12 @@ const PLACEHOLDER_SCENES = [
   { id: "concrete", name: "Obstructed Concrete Facade" },
 ];
 
-export function MuralTriptych({ murals, isGenerating, selected, onSelect, retryNonce, showDebug }: Props) {
-  const slots = murals ?? PLACEHOLDER_SCENES.map((s) => ({ ...s, imageUrl: null }));
+export function MuralTriptych({ murals, isGenerating, selected, onSelect, retryNonce, showDebug, count = 3 }: Props) {
+  const slots = murals ?? PLACEHOLDER_SCENES.slice(0, count).map((s) => ({ ...s, imageUrl: null }));
+  const gridCols = slots.length === 1 ? "md:grid-cols-1" : slots.length === 2 ? "md:grid-cols-2" : "md:grid-cols-3";
 
   return (
-    <div className="relative grid grid-cols-1 gap-[2px] overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10 md:grid-cols-3">
+    <div className={cn("relative grid grid-cols-1 gap-[2px] overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10", gridCols)}>
       {slots.map((m, i) => {
         const isSelected = selected === m.id;
         return (
