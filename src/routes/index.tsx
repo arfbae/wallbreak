@@ -35,7 +35,7 @@ function MuralStudio() {
     mutationFn: async (variant: "base" | "retry") => {
       if (!artwork) throw new Error("no artwork");
       return generate({
-        data: { artworkDataUrl: artwork, wallDataUrl: wall, variant, apiKey: apiKey || null },
+        data: { artworkDataUrl: artwork, wallDataUrl: wall, variant, apiKey: apiKey || null, count },
       });
     },
     onSuccess: (data, variant) => {
