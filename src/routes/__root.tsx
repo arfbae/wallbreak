@@ -82,8 +82,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "WallBreak - Mural Mockup Studio" },
       { name: "twitter:description", content: "Generates three distinct mural mockups of uploaded artwork on various surfaces, offering interactive reveals." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4be3046c-4b88-4572-945c-762d8a3ae248/id-preview-5cdd08a7--7602ff8e-d16d-4ea9-9d12-78b0bc883232.lovable.app-1780646872548.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4be3046c-4b88-4572-945c-762d8a3ae248/id-preview-5cdd08a7--7602ff8e-d16d-4ea9-9d12-78b0bc883232.lovable.app-1780646872548.png" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/26810dcf-a060-4ff2-80c6-74241d8381a4" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/26810dcf-a060-4ff2-80c6-74241d8381a4" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
