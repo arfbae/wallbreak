@@ -140,6 +140,8 @@ export const generateMurals = createServerFn({ method: "POST" })
       wallDataUrl?: string | null;
       variant?: "base" | "retry";
       apiKey?: string | null;
+      apiKeys?: string[] | null;
+      serverFallback?: boolean;
       count?: number;
     }) => {
       if (!input?.artworkDataUrl || typeof input.artworkDataUrl !== "string") {
@@ -151,24 +153,38 @@ export const generateMurals = createServerFn({ method: "POST" })
       if (input.wallDataUrl && !input.wallDataUrl.startsWith("data:image/")) {
         throw new Error("wallDataUrl must be a data:image/* URL");
       }
-      const apiKey = typeof input.apiKey === "string" ? input.apiKey.trim() : "";
+      const raw: string[] = [];
+      if (Array.isArray(input.apiKeys)) raw.push(...input.apiKeys);
+      if (typeof input.apiKey === "string") raw.push(input.apiKey);
+      const apiKeys = Array.from(
+        new Set(raw.map((k) => (typeof k === "string" ? k.trim() : "")).filter(Boolean)),
+      );
       const rawCount = typeof input.count === "number" ? Math.floor(input.count) : 3;
       const count = Math.max(1, Math.min(3, rawCount));
       return {
         artworkDataUrl: input.artworkDataUrl,
         wallDataUrl: input.wallDataUrl ?? null,
         variant: input.variant ?? "base",
-        apiKey: apiKey || null,
+        apiKeys,
+        serverFallback: input.serverFallback !== false,
         count,
       };
     },
   )
   .handler(async ({ data }) => {
+    const keys: KeyEntry[] = data.apiKeys.map((k, i) => ({
+      key: k,
+      label: `user key ${i + 1}`,
+    }));
+    if (data.serverFallback && process.env.LOVABLE_API_KEY) {
+      keys.push({ key: process.env.LOVABLE_API_KEY, label: "server key" });
+    }
     const scenes = SCENES.slice(0, data.count);
     const results = await Promise.all(
       scenes.map((s) =>
-        generateOne(s, data.artworkDataUrl, data.wallDataUrl, data.variant, data.apiKey),
+        generateOne(s, data.artworkDataUrl, data.wallDataUrl, data.variant, keys),
       ),
     );
     return { murals: results };
   });
+
