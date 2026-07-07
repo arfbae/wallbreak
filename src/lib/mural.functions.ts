@@ -51,16 +51,49 @@ const SCENES: Scene[] = [
 const STYLE_LOCK =
   "CRITICAL ARTWORK FIDELITY: The mural artwork (FIRST image) must match its reference 1:1 — preserve exact composition, line work, color palette, and every detail. Do not stylize, simplify, crop, or redraw it. CRITICAL BACKGROUND FIDELITY (when a SECOND image is provided): treat that second image as a fixed photographic plate. Return the same photo with only a painted mural added to its primary wall plane. Never invent a new wall, never replace the sky/ground/surroundings, never re-light the scene, never change the camera. The final image must look like the original wall photo with a real mural that was painted onto it — surface texture bleeding through paint at ~8% opacity, mural perspective conforming to the wall's existing geometry, lighting on the paint exactly matching the lighting already in the photo.";
 
+type KeyEntry = { key: string; label: string };
+
+async function tryOnce(
+  key: string,
+  body: string,
+): Promise<{ ok: true; imageUrl: string } | { ok: false; status: number; msg: string }> {
+  try {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      const msg =
+        res.status === 401 || res.status === 403
+          ? `Auth ${res.status} — invalid/unauthorized key`
+          : res.status === 429
+            ? "Rate limit — please wait a moment."
+            : res.status === 402
+              ? "AI credits exhausted."
+              : `Gateway error ${res.status}`;
+      console.error(`[gateway ${res.status}] ${msg}: ${text.slice(0, 200)}`);
+      return { ok: false, status: res.status, msg };
+    }
+    const data = await res.json();
+    const imageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url ?? null;
+    if (!imageUrl) return { ok: false, status: 200, msg: "No image returned" };
+    return { ok: true, imageUrl };
+  } catch (err) {
+    return { ok: false, status: 0, msg: err instanceof Error ? err.message : "Network error" };
+  }
+}
+
 async function generateOne(
   scene: Scene,
   artworkDataUrl: string,
   wallDataUrl: string | null,
   variant: "base" | "retry",
-  userApiKey: string | null,
-): Promise<{ id: Scene["id"]; name: string; imageUrl: string | null; error?: string }> {
-  const apiKey = userApiKey || process.env.LOVABLE_API_KEY;
-  if (!apiKey) {
-    return { id: scene.id, name: scene.name, imageUrl: null, error: "No API key — add one in the UI or configure LOVABLE_API_KEY" };
+  keys: KeyEntry[],
+): Promise<{ id: Scene["id"]; name: string; imageUrl: string | null; error?: string; keyUsed?: string }> {
+  if (keys.length === 0) {
+    return { id: scene.id, name: scene.name, imageUrl: null, error: "No API key available" };
   }
 
   const scenePrompt = wallDataUrl
@@ -72,55 +105,33 @@ async function generateOne(
       : scene.retryPrompt;
 
   const prompt = `${STYLE_LOCK}\n\nSCENE: ${scenePrompt}`;
+  const content: Array<Record<string, unknown>> = [
+    { type: "text", text: prompt },
+    { type: "image_url", image_url: { url: artworkDataUrl } },
+  ];
+  if (wallDataUrl) content.push({ type: "image_url", image_url: { url: wallDataUrl } });
 
-  const content: Array<Record<string, unknown>> = [{ type: "text", text: prompt }];
-  content.push({ type: "image_url", image_url: { url: artworkDataUrl } });
-  if (wallDataUrl) {
-    content.push({ type: "image_url", image_url: { url: wallDataUrl } });
-  }
+  const body = JSON.stringify({
+    model: "google/gemini-2.5-flash-image",
+    messages: [{ role: "user", content }],
+    modalities: ["image", "text"],
+  });
 
-  try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content }],
-        modalities: ["image", "text"],
-      }),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      const msg =
-        res.status === 429
-          ? "Rate limit — please wait a moment."
-          : res.status === 402
-            ? "AI credits exhausted. Add credits in Settings → Workspace → Usage."
-            : `Gateway error ${res.status}`;
-      console.error(`[${scene.id}] ${msg}: ${text}`);
-      return { id: scene.id, name: scene.name, imageUrl: null, error: msg };
+  let lastMsg = "All keys failed";
+  for (const entry of keys) {
+    const result = await tryOnce(entry.key, body);
+    if (result.ok) {
+      return { id: scene.id, name: scene.name, imageUrl: result.imageUrl, keyUsed: entry.label };
     }
-
-    const data = await res.json();
-    const imageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url ?? null;
-    if (!imageUrl) {
-      return { id: scene.id, name: scene.name, imageUrl: null, error: "No image returned" };
+    lastMsg = `${entry.label}: ${result.msg}`;
+    // Only fall through to next key on auth failures. Rate limit / credits / other → stop.
+    if (result.status !== 401 && result.status !== 403 && result.status !== 0) {
+      break;
     }
-    return { id: scene.id, name: scene.name, imageUrl };
-  } catch (err) {
-    console.error(`[${scene.id}] failed`, err);
-    return {
-      id: scene.id,
-      name: scene.name,
-      imageUrl: null,
-      error: err instanceof Error ? err.message : "Unknown error",
-    };
   }
+  return { id: scene.id, name: scene.name, imageUrl: null, error: lastMsg };
 }
+
 
 export const generateMurals = createServerFn({ method: "POST" })
   .inputValidator(
@@ -129,6 +140,8 @@ export const generateMurals = createServerFn({ method: "POST" })
       wallDataUrl?: string | null;
       variant?: "base" | "retry";
       apiKey?: string | null;
+      apiKeys?: string[] | null;
+      serverFallback?: boolean;
       count?: number;
     }) => {
       if (!input?.artworkDataUrl || typeof input.artworkDataUrl !== "string") {
@@ -140,24 +153,38 @@ export const generateMurals = createServerFn({ method: "POST" })
       if (input.wallDataUrl && !input.wallDataUrl.startsWith("data:image/")) {
         throw new Error("wallDataUrl must be a data:image/* URL");
       }
-      const apiKey = typeof input.apiKey === "string" ? input.apiKey.trim() : "";
+      const raw: string[] = [];
+      if (Array.isArray(input.apiKeys)) raw.push(...input.apiKeys);
+      if (typeof input.apiKey === "string") raw.push(input.apiKey);
+      const apiKeys = Array.from(
+        new Set(raw.map((k) => (typeof k === "string" ? k.trim() : "")).filter(Boolean)),
+      );
       const rawCount = typeof input.count === "number" ? Math.floor(input.count) : 3;
       const count = Math.max(1, Math.min(3, rawCount));
       return {
         artworkDataUrl: input.artworkDataUrl,
         wallDataUrl: input.wallDataUrl ?? null,
         variant: input.variant ?? "base",
-        apiKey: apiKey || null,
+        apiKeys,
+        serverFallback: input.serverFallback !== false,
         count,
       };
     },
   )
   .handler(async ({ data }) => {
+    const keys: KeyEntry[] = data.apiKeys.map((k, i) => ({
+      key: k,
+      label: `user key ${i + 1}`,
+    }));
+    if (data.serverFallback && process.env.LOVABLE_API_KEY) {
+      keys.push({ key: process.env.LOVABLE_API_KEY, label: "server key" });
+    }
     const scenes = SCENES.slice(0, data.count);
     const results = await Promise.all(
       scenes.map((s) =>
-        generateOne(s, data.artworkDataUrl, data.wallDataUrl, data.variant, data.apiKey),
+        generateOne(s, data.artworkDataUrl, data.wallDataUrl, data.variant, keys),
       ),
     );
     return { murals: results };
   });
+
