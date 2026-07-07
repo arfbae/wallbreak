@@ -24,20 +24,28 @@ function MuralStudio() {
   const [revealOpen, setRevealOpen] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
-  const [apiKey, setApiKey] = useState("");
+  const [apiKeyState, setApiKeyState] = useState<ApiKeyState>({ keys: [], serverFallback: true });
   const [count, setCount] = useState<1 | 2 | 3>(3);
 
   useEffect(() => {
-    setApiKey(loadStoredApiKey());
+    setApiKeyState(loadStoredApiKeyState());
   }, []);
 
   const mutation = useMutation({
     mutationFn: async (variant: "base" | "retry") => {
       if (!artwork) throw new Error("no artwork");
       return generate({
-        data: { artworkDataUrl: artwork, wallDataUrl: wall, variant, apiKey: apiKey || null, count },
+        data: {
+          artworkDataUrl: artwork,
+          wallDataUrl: wall,
+          variant,
+          apiKeys: apiKeyState.keys,
+          serverFallback: apiKeyState.serverFallback,
+          count,
+        },
       });
     },
+
     onSuccess: (data, variant) => {
       setMurals(data.murals);
       if (variant === "retry") setRetryNonce((n) => n + 1);
