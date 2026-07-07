@@ -9,7 +9,7 @@ import { UploadZone } from "@/components/mural/UploadZone";
 import { MuralTriptych, type Mural } from "@/components/mural/MuralTriptych";
 import { ControlDock } from "@/components/mural/ControlDock";
 import { CinematicReveal } from "@/components/mural/CinematicReveal";
-import { ApiKeyField, loadStoredApiKey } from "@/components/mural/ApiKeyField";
+import { ApiKeyField, loadStoredApiKeyState, type ApiKeyState } from "@/components/mural/ApiKeyField";
 
 export const Route = createFileRoute("/")({
   component: MuralStudio,
