@@ -182,11 +182,12 @@ export const generateMurals = createServerFn({ method: "POST" })
     }
     const results = await Promise.all(
       data.artworks.map((artworkDataUrl, i) => {
-        const scene = SCENES[i % SCENES.length];
-        // Give each mockup a unique id so React keys stay stable when >1 artwork.
-        const sceneWithId: Scene = { ...scene, id: (`${scene.id}-${i}`) as Scene["id"] };
+        // When a wall photo is provided, every mockup uses Scene A's strict
+        // background-lock prompt (Scene B/C rewrite/obstruct the photo).
+        const baseScene = data.wallDataUrl ? SCENES[0] : SCENES[i % SCENES.length];
+        const sceneWithId: Scene = { ...baseScene, id: (`${baseScene.id}-${i}`) as Scene["id"] };
         return generateOne(sceneWithId, artworkDataUrl, data.wallDataUrl, data.variant, keys)
-          .then((r) => ({ ...r, name: `Artwork ${i + 1} — ${scene.name.replace(/^Scene [A-C] — /, "")}` }));
+          .then((r) => ({ ...r, name: `Artwork ${i + 1}` }));
       }),
     );
     return { murals: results };
