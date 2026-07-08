@@ -5,31 +5,25 @@ export default defineTool({
   name: "generate_mural_mockups",
   title: "Generate mural mockups",
   description:
-    "Render 3 photorealistic mural mockups (frontal shipping container, angled brick corner, obstructed concrete facade) from an artwork image URL. Optionally composite the mural onto a provided wall photo.",
+    "Render one photorealistic mural mockup per artwork (up to 3). Optionally composite each mural onto a provided wall photo.",
   inputSchema: {
-    artworkUrl: z
-      .string()
-      .url()
-      .describe("Public HTTPS URL of the artwork image to paint as a mural."),
+    artworkUrls: z
+      .array(z.string().url())
+      .min(1)
+      .max(3)
+      .describe("1-3 public HTTPS URLs of artwork images. One mockup is rendered per artwork."),
     wallUrl: z
       .string()
       .url()
       .optional()
-      .describe("Optional public HTTPS URL of a wall photo to use as the background plate."),
+      .describe("Optional public HTTPS URL of a wall photo to use as the background plate for every mockup."),
     variant: z
       .enum(["base", "retry"])
       .default("base")
       .describe("'base' for default composition, 'retry' to recompose lighting/angle."),
-    count: z
-      .number()
-      .int()
-      .min(1)
-      .max(3)
-      .default(3)
-      .describe("Number of mockup scenes to render (1-3)."),
   },
   annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: true },
-  handler: async ({ artworkUrl, wallUrl, variant, count }) => {
+  handler: async ({ artworkUrls, wallUrl, variant }) => {
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) {
       return {
@@ -48,14 +42,14 @@ export default defineTool({
       return `data:${ct};base64,${btoa(bin)}`;
     }
 
-    const [artworkDataUrl, wallDataUrl] = await Promise.all([
-      toDataUrl(artworkUrl),
+    const [artworkDataUrls, wallDataUrl] = await Promise.all([
+      Promise.all(artworkUrls.map(toDataUrl)),
       wallUrl ? toDataUrl(wallUrl) : Promise.resolve(null),
     ]);
 
     const { generateMurals } = await import("@/lib/mural.functions");
     const result = await generateMurals({
-      data: { artworkDataUrl, wallDataUrl, variant, apiKey: null, count },
+      data: { artworkDataUrls, wallDataUrl, variant, apiKey: null },
     });
 
     return {
