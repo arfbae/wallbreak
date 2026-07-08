@@ -123,13 +123,9 @@ function MuralStudio() {
         {/* Upload + Generate */}
         <section>
           <UploadZone
-            artworkUrl={artwork}
+            artworkUrls={artworks}
             wallUrl={wall}
-            onArtwork={(d) => {
-              setArtwork(d);
-              setMurals(null);
-              setSelected(null);
-            }}
+            onArtwork={setArtworkAt}
             onWall={(d) => {
               setWall(d);
               setMurals(null);
@@ -137,8 +133,6 @@ function MuralStudio() {
             }}
             onGenerate={() => mutation.mutate("base")}
             isGenerating={mutation.isPending}
-            count={count}
-            onCountChange={setCount}
           />
         </section>
 
