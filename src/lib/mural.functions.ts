@@ -136,7 +136,8 @@ async function generateOne(
 export const generateMurals = createServerFn({ method: "POST" })
   .inputValidator(
     (input: {
-      artworkDataUrl: string;
+      artworkDataUrl?: string;
+      artworkDataUrls?: string[];
       wallDataUrl?: string | null;
       variant?: "base" | "retry";
       apiKey?: string | null;
@@ -144,11 +145,14 @@ export const generateMurals = createServerFn({ method: "POST" })
       serverFallback?: boolean;
       count?: number;
     }) => {
-      if (!input?.artworkDataUrl || typeof input.artworkDataUrl !== "string") {
-        throw new Error("artworkDataUrl required");
-      }
-      if (!input.artworkDataUrl.startsWith("data:image/")) {
-        throw new Error("artworkDataUrl must be a data:image/* URL");
+      const artworkList: string[] = [];
+      if (Array.isArray(input.artworkDataUrls)) artworkList.push(...input.artworkDataUrls);
+      if (typeof input.artworkDataUrl === "string") artworkList.push(input.artworkDataUrl);
+      const artworks = artworkList
+        .filter((a): a is string => typeof a === "string" && a.startsWith("data:image/"))
+        .slice(0, 3);
+      if (artworks.length === 0) {
+        throw new Error("At least one artworkDataUrl is required (data:image/*)");
       }
       if (input.wallDataUrl && !input.wallDataUrl.startsWith("data:image/")) {
         throw new Error("wallDataUrl must be a data:image/* URL");
@@ -159,15 +163,12 @@ export const generateMurals = createServerFn({ method: "POST" })
       const apiKeys = Array.from(
         new Set(raw.map((k) => (typeof k === "string" ? k.trim() : "")).filter(Boolean)),
       );
-      const rawCount = typeof input.count === "number" ? Math.floor(input.count) : 3;
-      const count = Math.max(1, Math.min(3, rawCount));
       return {
-        artworkDataUrl: input.artworkDataUrl,
+        artworks,
         wallDataUrl: input.wallDataUrl ?? null,
         variant: input.variant ?? "base",
         apiKeys,
         serverFallback: input.serverFallback !== false,
-        count,
       };
     },
   )
@@ -179,11 +180,15 @@ export const generateMurals = createServerFn({ method: "POST" })
     if (data.serverFallback && process.env.LOVABLE_API_KEY) {
       keys.push({ key: process.env.LOVABLE_API_KEY, label: "server key" });
     }
-    const scenes = SCENES.slice(0, data.count);
     const results = await Promise.all(
-      scenes.map((s) =>
-        generateOne(s, data.artworkDataUrl, data.wallDataUrl, data.variant, keys),
-      ),
+      data.artworks.map((artworkDataUrl, i) => {
+        // When a wall photo is provided, every mockup uses Scene A's strict
+        // background-lock prompt (Scene B/C rewrite/obstruct the photo).
+        const baseScene = data.wallDataUrl ? SCENES[0] : SCENES[i % SCENES.length];
+        const sceneWithId: Scene = { ...baseScene, id: (`${baseScene.id}-${i}`) as Scene["id"] };
+        return generateOne(sceneWithId, artworkDataUrl, data.wallDataUrl, data.variant, keys)
+          .then((r) => ({ ...r, name: `Artwork ${i + 1}` }));
+      }),
     );
     return { murals: results };
   });

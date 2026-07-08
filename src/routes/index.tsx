@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
 
 function MuralStudio() {
   const generate = useServerFn(generateMurals);
-  const [artwork, setArtwork] = useState<string | null>(null);
+  const [artworks, setArtworks] = useState<(string | null)[]>([null, null, null]);
   const [wall, setWall] = useState<string | null>(null);
   const [murals, setMurals] = useState<Mural[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -25,23 +25,33 @@ function MuralStudio() {
   const [retryNonce, setRetryNonce] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
   const [apiKeyState, setApiKeyState] = useState<ApiKeyState>({ keys: [], serverFallback: true });
-  const [count, setCount] = useState<1 | 2 | 3>(3);
 
   useEffect(() => {
     setApiKeyState(loadStoredApiKeyState());
   }, []);
 
+  const setArtworkAt = (index: number, value: string | null) => {
+    setArtworks((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+    setMurals(null);
+    setSelected(null);
+  };
+
+  const filledArtworks = artworks.filter((a): a is string => Boolean(a));
+
   const mutation = useMutation({
     mutationFn: async (variant: "base" | "retry") => {
-      if (!artwork) throw new Error("no artwork");
+      if (filledArtworks.length === 0) throw new Error("no artwork");
       return generate({
         data: {
-          artworkDataUrl: artwork,
+          artworkDataUrls: filledArtworks,
           wallDataUrl: wall,
           variant,
           apiKeys: apiKeyState.keys,
           serverFallback: apiKeyState.serverFallback,
-          count,
         },
       });
     },
@@ -53,9 +63,9 @@ function MuralStudio() {
       if (failed.length === data.murals.length) {
         toast.error(failed[0]?.error ?? "All renders failed");
       } else if (failed.length > 0) {
-        toast.warning(`${failed.length} of ${data.murals.length} scenes failed`);
+        toast.warning(`${failed.length} of ${data.murals.length} mockups failed`);
       } else {
-        toast.success(variant === "retry" ? "Recomposed" : "Triptych rendered");
+        toast.success(variant === "retry" ? "Recomposed" : `${data.murals.length} mockup${data.murals.length > 1 ? "s" : ""} rendered`);
       }
     },
     onError: (err) => {
@@ -113,13 +123,9 @@ function MuralStudio() {
         {/* Upload + Generate */}
         <section>
           <UploadZone
-            artworkUrl={artwork}
+            artworkUrls={artworks}
             wallUrl={wall}
-            onArtwork={(d) => {
-              setArtwork(d);
-              setMurals(null);
-              setSelected(null);
-            }}
+            onArtwork={setArtworkAt}
             onWall={(d) => {
               setWall(d);
               setMurals(null);
@@ -127,8 +133,6 @@ function MuralStudio() {
             }}
             onGenerate={() => mutation.mutate("base")}
             isGenerating={mutation.isPending}
-            count={count}
-            onCountChange={setCount}
           />
         </section>
 
@@ -151,7 +155,7 @@ function MuralStudio() {
             onSelect={setSelected}
             retryNonce={retryNonce}
             showDebug={showDebug}
-            count={count}
+            count={(filledArtworks.length || 1) as 1 | 2 | 3}
           />
         </section>
 
