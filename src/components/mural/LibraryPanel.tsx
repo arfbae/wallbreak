@@ -115,7 +115,9 @@ export function LibraryPanel({
           <Row label="Walls" items={walls} onLoad={onLoadWall} onRemove={remove} />
 
           <p className="font-mono text-[9px] uppercase tracking-wider text-white/30">
-            Stored privately in this browser (IndexedDB). Clearing site data removes them.
+            {isCloud
+              ? "Synced to your cloud library — available on any device you sign in from."
+              : "Stored privately in this browser (IndexedDB). Sign in to sync across devices."}
           </p>
         </div>
       )}
