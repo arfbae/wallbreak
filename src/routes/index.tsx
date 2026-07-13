@@ -11,7 +11,9 @@ import { ControlDock } from "@/components/mural/ControlDock";
 import { CinematicReveal } from "@/components/mural/CinematicReveal";
 import { ApiKeyField, loadStoredApiKeyState, type ApiKeyState } from "@/components/mural/ApiKeyField";
 import { LibraryPanel } from "@/components/mural/LibraryPanel";
-import { saveLibraryItem } from "@/lib/library";
+import { AuthPill } from "@/components/mural/AuthPill";
+import { saveLibraryItem, migrateLocalToCloudIfNeeded } from "@/lib/library";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
   component: MuralStudio,
