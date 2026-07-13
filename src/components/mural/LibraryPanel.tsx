@@ -7,6 +7,7 @@ import {
   type LibraryItem,
   type LibraryKind,
 } from "@/lib/library";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 interface Props {
