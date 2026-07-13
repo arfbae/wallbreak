@@ -26,6 +26,8 @@ export function LibraryPanel({
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { user } = useAuth();
+  const isCloud = !!user;
 
   const refresh = useCallback(async () => {
     setItems(await listLibrary());
