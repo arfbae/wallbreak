@@ -10,6 +10,8 @@ import { MuralTriptych, type Mural } from "@/components/mural/MuralTriptych";
 import { ControlDock } from "@/components/mural/ControlDock";
 import { CinematicReveal } from "@/components/mural/CinematicReveal";
 import { ApiKeyField, loadStoredApiKeyState, type ApiKeyState } from "@/components/mural/ApiKeyField";
+import { LibraryPanel } from "@/components/mural/LibraryPanel";
+import { saveLibraryItem } from "@/lib/library";
 
 export const Route = createFileRoute("/")({
   component: MuralStudio,
