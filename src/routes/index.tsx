@@ -10,6 +10,8 @@ import { MuralTriptych, type Mural } from "@/components/mural/MuralTriptych";
 import { ControlDock } from "@/components/mural/ControlDock";
 import { CinematicReveal } from "@/components/mural/CinematicReveal";
 import { ApiKeyField, loadStoredApiKeyState, type ApiKeyState } from "@/components/mural/ApiKeyField";
+import { LibraryPanel } from "@/components/mural/LibraryPanel";
+import { saveLibraryItem } from "@/lib/library";
 
 export const Route = createFileRoute("/")({
   component: MuralStudio,
@@ -38,6 +40,26 @@ function MuralStudio() {
     });
     setMurals(null);
     setSelected(null);
+    if (value) void saveLibraryItem("artwork", value).catch(() => {});
+  };
+
+
+  const loadArtworkFromLibrary = (dataUrl: string) => {
+    setArtworks((prev) => {
+      const next = [...prev];
+      const emptyIdx = next.findIndex((v) => !v);
+      next[emptyIdx === -1 ? 0 : emptyIdx] = dataUrl;
+      return next;
+    });
+    setMurals(null);
+    setSelected(null);
+  };
+
+  const setWallAndSave = (dataUrl: string) => {
+    setWall(dataUrl);
+    setMurals(null);
+    setSelected(null);
+    void saveLibraryItem("wall", dataUrl).catch(() => {});
   };
 
   const filledArtworks = artworks.filter((a): a is string => Boolean(a));
@@ -126,13 +148,19 @@ function MuralStudio() {
             artworkUrls={artworks}
             wallUrl={wall}
             onArtwork={setArtworkAt}
-            onWall={(d) => {
-              setWall(d);
-              setMurals(null);
-              setSelected(null);
-            }}
+            onWall={setWallAndSave}
             onGenerate={() => mutation.mutate("base")}
             isGenerating={mutation.isPending}
+          />
+        </section>
+
+        {/* Library */}
+        <section>
+          <LibraryPanel
+            currentArtworks={artworks}
+            currentWall={wall}
+            onLoadArtwork={loadArtworkFromLibrary}
+            onLoadWall={setWallAndSave}
           />
         </section>
 
