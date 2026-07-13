@@ -43,6 +43,7 @@ function MuralStudio() {
     if (value) void saveLibraryItem("artwork", value).catch(() => {});
   };
 
+
   const loadArtworkFromLibrary = (dataUrl: string) => {
     setArtworks((prev) => {
       const next = [...prev];
