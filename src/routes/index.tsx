@@ -174,6 +174,7 @@ function MuralStudio() {
         {/* Library */}
         <section>
           <LibraryPanel
+            key={`lib-${user?.id ?? "anon"}-${libraryNonce}`}
             currentArtworks={artworks}
             currentWall={wall}
             onLoadArtwork={loadArtworkFromLibrary}
