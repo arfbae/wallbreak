@@ -148,7 +148,8 @@ function MuralStudio() {
               Mural Mockup <span className="text-[var(--studio-accent)]">Studio</span>
             </h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <AuthPill />
             <ApiKeyField value={apiKeyState} onChange={setApiKeyState} />
             <div className="hidden text-right font-mono text-[10px] uppercase leading-relaxed tracking-[0.18em] text-white/40 lg:block">
               <div>KEY 1200W · FILL 500W · RIM 700W</div>
