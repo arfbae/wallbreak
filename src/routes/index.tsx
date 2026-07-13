@@ -29,10 +29,24 @@ function MuralStudio() {
   const [retryNonce, setRetryNonce] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
   const [apiKeyState, setApiKeyState] = useState<ApiKeyState>({ keys: [], serverFallback: true });
+  const { user } = useAuth();
+  const [libraryNonce, setLibraryNonce] = useState(0);
 
   useEffect(() => {
     setApiKeyState(loadStoredApiKeyState());
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    void migrateLocalToCloudIfNeeded(user.id).then((n) => {
+      if (n > 0) {
+        toast.success(`Synced ${n} item${n > 1 ? "s" : ""} to your cloud library`);
+        setLibraryNonce((v) => v + 1);
+      } else {
+        setLibraryNonce((v) => v + 1);
+      }
+    });
+  }, [user]);
 
   const setArtworkAt = (index: number, value: string | null) => {
     setArtworks((prev) => {
