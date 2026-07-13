@@ -71,7 +71,7 @@ export function LibraryPanel({
         <div className="flex items-center gap-2">
           <Cloud className="h-4 w-4 text-[var(--studio-accent)]" />
           <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">
-            Library · {items.length} saved
+            Library · {items.length} saved · {isCloud ? "cloud" : "local"}
           </span>
         </div>
         <span className="font-mono text-[10px] text-white/40">{open ? "hide" : "show"}</span>
