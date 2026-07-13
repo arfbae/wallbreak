@@ -40,6 +40,25 @@ function MuralStudio() {
     });
     setMurals(null);
     setSelected(null);
+    if (value) void saveLibraryItem("artwork", value).catch(() => {});
+  };
+
+  const loadArtworkFromLibrary = (dataUrl: string) => {
+    setArtworks((prev) => {
+      const next = [...prev];
+      const emptyIdx = next.findIndex((v) => !v);
+      next[emptyIdx === -1 ? 0 : emptyIdx] = dataUrl;
+      return next;
+    });
+    setMurals(null);
+    setSelected(null);
+  };
+
+  const setWallAndSave = (dataUrl: string) => {
+    setWall(dataUrl);
+    setMurals(null);
+    setSelected(null);
+    void saveLibraryItem("wall", dataUrl).catch(() => {});
   };
 
   const filledArtworks = artworks.filter((a): a is string => Boolean(a));
