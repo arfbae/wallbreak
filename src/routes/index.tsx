@@ -148,13 +148,19 @@ function MuralStudio() {
             artworkUrls={artworks}
             wallUrl={wall}
             onArtwork={setArtworkAt}
-            onWall={(d) => {
-              setWall(d);
-              setMurals(null);
-              setSelected(null);
-            }}
+            onWall={setWallAndSave}
             onGenerate={() => mutation.mutate("base")}
             isGenerating={mutation.isPending}
+          />
+        </section>
+
+        {/* Library */}
+        <section>
+          <LibraryPanel
+            currentArtworks={artworks}
+            currentWall={wall}
+            onLoadArtwork={loadArtworkFromLibrary}
+            onLoadWall={setWallAndSave}
           />
         </section>
 
