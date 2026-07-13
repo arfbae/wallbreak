@@ -11,7 +11,9 @@ import { ControlDock } from "@/components/mural/ControlDock";
 import { CinematicReveal } from "@/components/mural/CinematicReveal";
 import { ApiKeyField, loadStoredApiKeyState, type ApiKeyState } from "@/components/mural/ApiKeyField";
 import { LibraryPanel } from "@/components/mural/LibraryPanel";
-import { saveLibraryItem } from "@/lib/library";
+import { AuthPill } from "@/components/mural/AuthPill";
+import { saveLibraryItem, migrateLocalToCloudIfNeeded } from "@/lib/library";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
   component: MuralStudio,
@@ -27,10 +29,24 @@ function MuralStudio() {
   const [retryNonce, setRetryNonce] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
   const [apiKeyState, setApiKeyState] = useState<ApiKeyState>({ keys: [], serverFallback: true });
+  const { user } = useAuth();
+  const [libraryNonce, setLibraryNonce] = useState(0);
 
   useEffect(() => {
     setApiKeyState(loadStoredApiKeyState());
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    void migrateLocalToCloudIfNeeded(user.id).then((n) => {
+      if (n > 0) {
+        toast.success(`Synced ${n} item${n > 1 ? "s" : ""} to your cloud library`);
+        setLibraryNonce((v) => v + 1);
+      } else {
+        setLibraryNonce((v) => v + 1);
+      }
+    });
+  }, [user]);
 
   const setArtworkAt = (index: number, value: string | null) => {
     setArtworks((prev) => {
@@ -132,7 +148,8 @@ function MuralStudio() {
               Mural Mockup <span className="text-[var(--studio-accent)]">Studio</span>
             </h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <AuthPill />
             <ApiKeyField value={apiKeyState} onChange={setApiKeyState} />
             <div className="hidden text-right font-mono text-[10px] uppercase leading-relaxed tracking-[0.18em] text-white/40 lg:block">
               <div>KEY 1200W · FILL 500W · RIM 700W</div>
@@ -157,6 +174,7 @@ function MuralStudio() {
         {/* Library */}
         <section>
           <LibraryPanel
+            key={`lib-${user?.id ?? "anon"}-${libraryNonce}`}
             currentArtworks={artworks}
             currentWall={wall}
             onLoadArtwork={loadArtworkFromLibrary}

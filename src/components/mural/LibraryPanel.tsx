@@ -7,6 +7,7 @@ import {
   type LibraryItem,
   type LibraryKind,
 } from "@/lib/library";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -25,6 +26,8 @@ export function LibraryPanel({
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { user } = useAuth();
+  const isCloud = !!user;
 
   const refresh = useCallback(async () => {
     setItems(await listLibrary());
@@ -68,7 +71,7 @@ export function LibraryPanel({
         <div className="flex items-center gap-2">
           <Cloud className="h-4 w-4 text-[var(--studio-accent)]" />
           <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">
-            Library · {items.length} saved
+            Library · {items.length} saved · {isCloud ? "cloud" : "local"}
           </span>
         </div>
         <span className="font-mono text-[10px] text-white/40">{open ? "hide" : "show"}</span>
@@ -112,7 +115,9 @@ export function LibraryPanel({
           <Row label="Walls" items={walls} onLoad={onLoadWall} onRemove={remove} />
 
           <p className="font-mono text-[9px] uppercase tracking-wider text-white/30">
-            Stored privately in this browser (IndexedDB). Clearing site data removes them.
+            {isCloud
+              ? "Synced to your cloud library — available on any device you sign in from."
+              : "Stored privately in this browser (IndexedDB). Sign in to sync across devices."}
           </p>
         </div>
       )}
