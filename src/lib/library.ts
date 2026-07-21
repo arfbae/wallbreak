@@ -9,8 +9,11 @@ export interface LibraryItem {
   name: string;
   dataUrl: string; // always a data:image/* URL (needed by server fn)
   createdAt: number;
+  updatedAt: number;
+  deletedAt?: number;
   remote?: boolean;
   storagePath?: string;
+  dirty?: boolean; // local edits not yet pushed to cloud
 }
 
 const PREFIX = "mural.lib.";
@@ -18,7 +21,15 @@ const BUCKET = "library";
 const keyFor = (id: string) => `${PREFIX}${id}`;
 
 // ---------- local (IndexedDB) ----------
-async function listLocal(): Promise<LibraryItem[]> {
+async function getLocal(id: string): Promise<LibraryItem | undefined> {
+  return await get<LibraryItem>(keyFor(id));
+}
+
+async function putLocal(item: LibraryItem): Promise<void> {
+  await set(keyFor(item.id), item);
+}
+
+async function listLocalAll(): Promise<LibraryItem[]> {
   const allKeys = await keys();
   const items: LibraryItem[] = [];
   for (const k of allKeys) {
@@ -27,24 +38,7 @@ async function listLocal(): Promise<LibraryItem[]> {
       if (v) items.push(v);
     }
   }
-  return items.sort((a, b) => b.createdAt - a.createdAt);
-}
-
-async function saveLocal(kind: LibraryKind, dataUrl: string, name?: string): Promise<LibraryItem> {
-  const id = `${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const item: LibraryItem = {
-    id,
-    kind,
-    name: name ?? `${kind === "artwork" ? "Artwork" : "Wall"} ${new Date().toLocaleString()}`,
-    dataUrl,
-    createdAt: Date.now(),
-  };
-  await set(keyFor(id), item);
-  return item;
-}
-
-async function deleteLocal(id: string): Promise<void> {
-  await del(keyFor(id));
+  return items;
 }
 
 // ---------- helpers ----------
@@ -72,86 +66,148 @@ async function currentUserId(): Promise<string | null> {
   return data.session?.user.id ?? null;
 }
 
-// ---------- cloud ----------
-async function listCloud(userId: string): Promise<LibraryItem[]> {
+function newerWins(a: LibraryItem, b: LibraryItem): LibraryItem {
+  return a.updatedAt >= b.updatedAt ? a : b;
+}
+
+// ---------- cloud primitives ----------
+interface CloudRow {
+  id: string;
+  kind: LibraryKind;
+  name: string;
+  storage_path: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+async function fetchCloudRows(): Promise<CloudRow[]> {
   const { data, error } = await supabase
     .from("library_items")
-    .select("id, kind, name, storage_path, created_at")
-    .order("created_at", { ascending: false });
+    .select("id, kind, name, storage_path, created_at, updated_at, deleted_at")
+    .order("updated_at", { ascending: false });
   if (error) throw error;
-  const items: LibraryItem[] = [];
-  for (const row of data ?? []) {
-    const { data: file } = await supabase.storage.from(BUCKET).download(row.storage_path);
-    if (!file) continue;
-    const dataUrl = await blobToDataUrl(file);
-    items.push({
+  return (data ?? []) as unknown as CloudRow[];
+}
+
+async function downloadCloudDataUrl(path: string): Promise<string | null> {
+  const { data: file } = await supabase.storage.from(BUCKET).download(path);
+  if (!file) return null;
+  return await blobToDataUrl(file);
+}
+
+async function uploadCloudFile(userId: string, id: string, dataUrl: string): Promise<string> {
+  const { blob, ext } = dataUrlToBlob(dataUrl);
+  const path = `${userId}/${id}.${ext}`;
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, blob, { contentType: blob.type, upsert: true });
+  if (error) throw error;
+  return path;
+}
+
+async function pushLocalToCloud(userId: string, item: LibraryItem): Promise<LibraryItem> {
+  // Ensure file present when we have raw data; if item was cloud-origin with only a
+  // rename change we can skip re-upload.
+  let path = item.storagePath;
+  if (!path) path = await uploadCloudFile(userId, item.id, item.dataUrl);
+  const payload = {
+    id: item.id,
+    user_id: userId,
+    kind: item.kind,
+    name: item.name,
+    storage_path: path,
+    created_at: new Date(item.createdAt).toISOString(),
+    updated_at: new Date(item.updatedAt).toISOString(),
+    deleted_at: item.deletedAt ? new Date(item.deletedAt).toISOString() : null,
+  };
+  const { error } = await supabase
+    .from("library_items")
+    .upsert(payload, { onConflict: "id" });
+  if (error) throw error;
+  return { ...item, remote: true, storagePath: path, dirty: false };
+}
+
+// ---------- merge / sync ----------
+async function syncWithCloud(userId: string): Promise<LibraryItem[]> {
+  const localItems = await listLocalAll();
+  const localMap = new Map(localItems.map((i) => [i.id, i]));
+
+  const cloudRows = await fetchCloudRows();
+  const cloudMap = new Map(cloudRows.map((r) => [r.id, r]));
+
+  const seen = new Set<string>();
+
+  // 1. Reconcile items present in cloud (with or without local twin).
+  for (const row of cloudRows) {
+    seen.add(row.id);
+    const cloudUpdatedAt = new Date(row.updated_at).getTime();
+    const cloudDeletedAt = row.deleted_at ? new Date(row.deleted_at).getTime() : undefined;
+    const local = localMap.get(row.id);
+
+    if (local && local.updatedAt > cloudUpdatedAt) {
+      // Local is newer — push (may be rename or tombstone).
+      try {
+        const pushed = await pushLocalToCloud(userId, local);
+        await putLocal(pushed);
+      } catch (e) {
+        console.warn("push newer local failed", row.id, e);
+      }
+      continue;
+    }
+
+    // Cloud is newer or equal — adopt cloud version locally.
+    let dataUrl = local?.dataUrl;
+    if (!dataUrl || (local && local.storagePath !== row.storage_path)) {
+      dataUrl = (await downloadCloudDataUrl(row.storage_path)) ?? "";
+    }
+    const merged: LibraryItem = {
       id: row.id,
-      kind: row.kind as LibraryKind,
+      kind: row.kind,
       name: row.name,
-      dataUrl,
+      dataUrl: dataUrl ?? "",
       createdAt: new Date(row.created_at).getTime(),
+      updatedAt: cloudUpdatedAt,
+      deletedAt: cloudDeletedAt,
       remote: true,
       storagePath: row.storage_path,
-    });
+      dirty: false,
+    };
+    if (merged.dataUrl) await putLocal(merged);
   }
-  return items;
-  void userId;
-}
 
-async function saveCloud(
-  userId: string,
-  kind: LibraryKind,
-  dataUrl: string,
-  name?: string,
-): Promise<LibraryItem> {
-  const { blob, ext } = dataUrlToBlob(dataUrl);
-  const id = crypto.randomUUID();
-  const path = `${userId}/${id}.${ext}`;
-  const { error: upErr } = await supabase.storage
-    .from(BUCKET)
-    .upload(path, blob, { contentType: blob.type, upsert: false });
-  if (upErr) throw upErr;
-  const displayName = name ?? `${kind === "artwork" ? "Artwork" : "Wall"} ${new Date().toLocaleString()}`;
-  const { data: row, error: insErr } = await supabase
-    .from("library_items")
-    .insert({ id, user_id: userId, kind, name: displayName, storage_path: path })
-    .select()
-    .single();
-  if (insErr) throw insErr;
-  return {
-    id: row.id,
-    kind,
-    name: displayName,
-    dataUrl,
-    createdAt: new Date(row.created_at).getTime(),
-    remote: true,
-    storagePath: path,
-  };
-}
-
-async function deleteCloud(id: string): Promise<void> {
-  const { data: row } = await supabase
-    .from("library_items")
-    .select("storage_path")
-    .eq("id", id)
-    .maybeSingle();
-  if (row?.storage_path) {
-    await supabase.storage.from(BUCKET).remove([row.storage_path]);
+  // 2. Local-only items → push if not yet in cloud.
+  for (const local of localItems) {
+    if (seen.has(local.id)) continue;
+    try {
+      const pushed = await pushLocalToCloud(userId, local);
+      await putLocal(pushed);
+    } catch (e) {
+      console.warn("push local-only failed", local.id, e);
+    }
   }
-  await supabase.from("library_items").delete().eq("id", id);
+
+  // 3. Return active, freshest local snapshot.
+  const finalItems = await listLocalAll();
+  return finalItems
+    .filter((i) => !i.deletedAt && i.dataUrl)
+    .sort((a, b) => b.createdAt - a.createdAt);
 }
 
-// ---------- public API (auto-routes cloud vs local) ----------
+// ---------- public API ----------
 export async function listLibrary(): Promise<LibraryItem[]> {
   const uid = await currentUserId();
   if (uid) {
     try {
-      return await listCloud(uid);
+      return await syncWithCloud(uid);
     } catch (e) {
-      console.warn("cloud list failed, falling back to local", e);
+      console.warn("cloud sync failed, using local", e);
     }
   }
-  return listLocal();
+  const items = await listLocalAll();
+  return items
+    .filter((i) => !i.deletedAt)
+    .sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export async function saveLibraryItem(
@@ -159,28 +215,86 @@ export async function saveLibraryItem(
   dataUrl: string,
   name?: string,
 ): Promise<LibraryItem> {
+  const now = Date.now();
+  const id = crypto.randomUUID();
+  const item: LibraryItem = {
+    id,
+    kind,
+    name: name ?? `${kind === "artwork" ? "Artwork" : "Wall"} ${new Date().toLocaleString()}`,
+    dataUrl,
+    createdAt: now,
+    updatedAt: now,
+    dirty: true,
+  };
+  await putLocal(item);
+
   const uid = await currentUserId();
   if (uid) {
     try {
-      return await saveCloud(uid, kind, dataUrl, name);
+      const pushed = await pushLocalToCloud(uid, item);
+      await putLocal(pushed);
+      return pushed;
     } catch (e) {
-      console.warn("cloud save failed, saving locally", e);
+      console.warn("cloud save failed, kept local (will retry on next sync)", e);
     }
   }
-  return saveLocal(kind, dataUrl, name);
+  return item;
+}
+
+export async function renameLibraryItem(id: string, name: string): Promise<void> {
+  const local = await getLocal(id);
+  if (!local) return;
+  const updated: LibraryItem = { ...local, name, updatedAt: Date.now(), dirty: true };
+  await putLocal(updated);
+  const uid = await currentUserId();
+  if (uid) {
+    try {
+      const pushed = await pushLocalToCloud(uid, updated);
+      await putLocal(pushed);
+    } catch (e) {
+      console.warn("cloud rename failed, will retry on next sync", e);
+    }
+  }
 }
 
 export async function deleteLibraryItem(id: string): Promise<void> {
+  const local = await getLocal(id);
+  const now = Date.now();
+  const tombstone: LibraryItem = local
+    ? { ...local, deletedAt: now, updatedAt: now, dirty: true }
+    : {
+        id,
+        kind: "artwork",
+        name: "",
+        dataUrl: "",
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: now,
+        dirty: true,
+      };
+  await putLocal(tombstone);
+
   const uid = await currentUserId();
   if (uid) {
     try {
-      await deleteCloud(id);
-      return;
+      const { error } = await supabase
+        .from("library_items")
+        .update({ deleted_at: new Date(now).toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+      // Best-effort: remove the underlying file too so storage doesn't linger.
+      if (local?.storagePath) {
+        await supabase.storage.from(BUCKET).remove([local.storagePath]);
+      }
+      await putLocal({ ...tombstone, dirty: false, remote: true });
     } catch (e) {
-      console.warn("cloud delete failed, trying local", e);
+      console.warn("cloud delete failed, will retry on next sync", e);
     }
+  } else {
+    // Offline / signed out — drop the tombstone locally after a short delay by
+    // just removing the empty record now; nothing to sync.
+    if (!local || !local.storagePath) await del(keyFor(id));
   }
-  await deleteLocal(id);
 }
 
 // ---------- migration ----------
@@ -189,12 +303,13 @@ const MIGRATED_FLAG = "mural.lib.migrated.";
 export async function migrateLocalToCloudIfNeeded(userId: string): Promise<number> {
   const flagKey = `${MIGRATED_FLAG}${userId}`;
   if (localStorage.getItem(flagKey)) return 0;
-  const local = await listLocal();
+  const local = await listLocalAll();
   let count = 0;
   for (const it of local) {
+    if (it.deletedAt) continue;
     try {
-      await saveCloud(userId, it.kind, it.dataUrl, it.name);
-      await deleteLocal(it.id);
+      const pushed = await pushLocalToCloud(userId, it);
+      await putLocal(pushed);
       count++;
     } catch (e) {
       console.warn("migrate item failed", it.id, e);
@@ -203,3 +318,6 @@ export async function migrateLocalToCloudIfNeeded(userId: string): Promise<numbe
   localStorage.setItem(flagKey, String(Date.now()));
   return count;
 }
+
+// Kept for compatibility with older callers that import this helper.
+export { newerWins as __newerWins };
