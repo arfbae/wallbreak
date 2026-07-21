@@ -17,26 +17,32 @@ export type Database = {
       library_items: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           kind: string
           name: string
           storage_path: string
+          updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           kind: string
           name: string
           storage_path: string
+          updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           kind?: string
           name?: string
           storage_path?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
