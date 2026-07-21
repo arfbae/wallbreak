@@ -184,7 +184,28 @@ async function syncWithCloud(userId: string): Promise<LibraryItem[]> {
       await putLocal(pushed);
     } catch (e) {
       console.warn("push local-only failed", local.id, e);
-    }
+}
+
+// ---------- shareable signed links ----------
+// Mints a time-limited signed URL for a cloud library item. Only works for
+// items already synced to cloud (item.storagePath present) and while the
+// caller is signed in — RLS on the bucket enforces that only the owner can
+// mint the link. The recipient of the link does NOT need an account.
+export async function createShareLink(
+  item: LibraryItem,
+  expiresInSeconds: number = 60 * 60 * 24 * 7, // 7 days
+): Promise<string> {
+  if (!item.storagePath) {
+    throw new Error("This item is only stored locally. Sign in to sync it, then share.");
+  }
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(item.storagePath, expiresInSeconds);
+  if (error || !data?.signedUrl) {
+    throw error ?? new Error("Failed to create share link");
+  }
+  return data.signedUrl;
+}
   }
 
   // 3. Return active, freshest local snapshot.
