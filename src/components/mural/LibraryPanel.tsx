@@ -66,6 +66,23 @@ export function LibraryPanel({
     await refresh();
   };
 
+  const [expirySeconds, setExpirySeconds] = useState(EXPIRY_OPTIONS[2].seconds);
+  const [sharedId, setSharedId] = useState<string | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
+
+  const share = async (item: LibraryItem) => {
+    setShareError(null);
+    try {
+      const url = await createShareLink(item, expirySeconds);
+      await navigator.clipboard.writeText(url);
+      setSharedId(item.id);
+      setTimeout(() => setSharedId((v) => (v === item.id ? null : v)), 2000);
+    } catch (e) {
+      setShareError(e instanceof Error ? e.message : "Could not create share link");
+      setTimeout(() => setShareError(null), 4000);
+    }
+  };
+
   const hasArtwork = currentArtworks.some(Boolean);
   const artworks = items.filter((i) => i.kind === "artwork");
   const walls = items.filter((i) => i.kind === "wall");
