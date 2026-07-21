@@ -1,14 +1,22 @@
 import { useEffect, useState, useCallback } from "react";
-import { Cloud, Trash2, Plus } from "lucide-react";
+import { Cloud, Trash2, Plus, Share2, Check } from "lucide-react";
 import {
   listLibrary,
   saveLibraryItem,
   deleteLibraryItem,
+  createShareLink,
   type LibraryItem,
   type LibraryKind,
 } from "@/lib/library";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+
+const EXPIRY_OPTIONS: { label: string; seconds: number }[] = [
+  { label: "1 hour", seconds: 60 * 60 },
+  { label: "24 hours", seconds: 60 * 60 * 24 },
+  { label: "7 days", seconds: 60 * 60 * 24 * 7 },
+  { label: "30 days", seconds: 60 * 60 * 24 * 30 },
+];
 
 interface Props {
   currentArtworks: (string | null)[];
