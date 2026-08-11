@@ -65,7 +65,7 @@ export const Route = createFileRoute("/view")({
             rel: "preload",
             as: "image" as const,
             href: match.search.src,
-            fetchpriority: "high",
+            fetchPriority: "high",
           },
         ]
       : [],
