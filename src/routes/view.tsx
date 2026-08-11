@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ArrowLeft, ImageOff, Maximize2 } from "lucide-react";
 
 type ViewSearch = {
@@ -9,13 +9,40 @@ type ViewSearch = {
   kind?: string;
 };
 
+// Supabase serves signed originals from /storage/v1/object/sign/… and
+// on-the-fly resized variants from /storage/v1/render/image/sign/….
+// When the URL matches, we can precompute width variants for a srcset so
+// phones download a ~640px image instead of a multi-megabyte original.
+const RENDER_WIDTHS = [640, 1024, 1600, 2048];
+
+function buildVariants(src: string): { srcSet?: string; base: string } {
+  if (!src.includes("/storage/v1/object/sign/")) return { base: src };
+  try {
+    const url = new URL(src);
+    url.pathname = url.pathname.replace(
+      "/storage/v1/object/sign/",
+      "/storage/v1/render/image/sign/",
+    );
+    const at = (w: number) => {
+      const v = new URL(url.toString());
+      v.searchParams.set("width", String(w));
+      v.searchParams.set("quality", "80");
+      v.searchParams.set("resize", "contain");
+      return `${v.toString()} ${w}w`;
+    };
+    return { srcSet: RENDER_WIDTHS.map(at).join(", "), base: src };
+  } catch {
+    return { base: src };
+  }
+}
+
 export const Route = createFileRoute("/view")({
   validateSearch: (search: Record<string, unknown>): ViewSearch => ({
     src: typeof search.src === "string" ? search.src : undefined,
     name: typeof search.name === "string" ? search.name : undefined,
     kind: typeof search.kind === "string" ? search.kind : undefined,
   }),
-  head: () => ({
+  head: ({ match }) => ({
     meta: [
       { title: "Shared Mockup Viewer — Mural Mockup Studio" },
       {
@@ -32,6 +59,16 @@ export const Route = createFileRoute("/view")({
       { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex" },
     ],
+    links: match.search?.src
+      ? [
+          {
+            rel: "preload",
+            as: "image" as const,
+            href: match.search.src,
+            fetchpriority: "high",
+          },
+        ]
+      : [],
   }),
   component: SharedViewer,
 });
@@ -40,8 +77,31 @@ function SharedViewer() {
   const { src, name, kind } = Route.useSearch();
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [ratio, setRatio] = useState<number | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+
+  const variants = src ? buildVariants(src) : null;
+
+  const onLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const el = e.currentTarget;
+    if (el.naturalWidth && el.naturalHeight) setRatio(el.naturalWidth / el.naturalHeight);
+    setLoaded(true);
+  }, []);
+
+  // A resized variant can 404 when image transformation isn't available —
+  // drop the srcset and fall back to the original signed URL once.
+  const onError = useCallback(() => {
+    const el = imgRef.current;
+    if (el && el.srcset) {
+      el.srcset = "";
+      return;
+    }
+    setFailed(true);
+  }, []);
 
   const title = name?.trim() || (kind === "wall" ? "Shared wall photo" : "Shared mockup");
+
+
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
