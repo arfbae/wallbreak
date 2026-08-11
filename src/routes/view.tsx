@@ -75,11 +75,20 @@ function SharedViewer() {
 
   const variants = src ? buildVariants(src) : null;
 
-  const onLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
-    const el = e.currentTarget;
+  const markLoaded = useCallback((el: HTMLImageElement) => {
     if (el.naturalWidth && el.naturalHeight) setRatio(el.naturalWidth / el.naturalHeight);
     setLoaded(true);
   }, []);
+
+  // Cached/instant images can finish decoding before React attaches onLoad,
+  // so also check `complete` the moment the node mounts.
+  const attachImg = useCallback(
+    (el: HTMLImageElement | null) => {
+      imgRef.current = el;
+      if (el?.complete && el.naturalWidth) markLoaded(el);
+    },
+    [markLoaded],
+  );
 
   // A resized variant can 404 when image transformation isn't available —
   // drop the srcset and fall back to the original signed URL once.
