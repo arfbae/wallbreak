@@ -168,14 +168,14 @@ function SharedViewer() {
                   </div>
                 )}
                 <motion.img
-                  ref={imgRef}
+                  ref={attachImg}
                   src={variants?.base}
                   srcSet={variants?.srcSet}
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 92vw, 1400px"
                   alt={title}
                   loading="eager"
                   decoding="async"
-                  onLoad={onLoad}
+                  onLoad={(e) => markLoaded(e.currentTarget)}
                   onError={onError}
                   initial={{ opacity: 0, scale: 1.02 }}
                   animate={{ opacity: loaded ? 1 : 0, scale: loaded ? 1 : 1.02 }}
