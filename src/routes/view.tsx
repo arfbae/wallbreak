@@ -153,7 +153,7 @@ function SharedViewer() {
               >
                 {!loaded && (
                   <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-white/[0.06] via-white/[0.03] to-transparent">
-                    <div className="absolute bottom-5 left-6 font-mono text-[10px] uppercase tracking-[0.3em] text-white/30">
+                    <div className="absolute inset-0 grid place-items-center font-mono text-[10px] uppercase tracking-[0.3em] text-white/30">
                       Decoding image…
                     </div>
                   </div>
