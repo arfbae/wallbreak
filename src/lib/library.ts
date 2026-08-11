@@ -340,5 +340,15 @@ export async function createShareLink(
   if (error || !data?.signedUrl) {
     throw error ?? new Error("Failed to create share link");
   }
-  return data.signedUrl;
+  return buildViewerUrl(data.signedUrl, item);
+}
+
+// Wraps a signed file URL in the public, read-only viewer page so recipients
+// get a presentation layout instead of a raw image.
+export function buildViewerUrl(signedUrl: string, item: Pick<LibraryItem, "name" | "kind">): string {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const params = new URLSearchParams({ src: signedUrl });
+  if (item.name) params.set("name", item.name);
+  if (item.kind) params.set("kind", item.kind);
+  return `${origin}/view?${params.toString()}`;
 }
