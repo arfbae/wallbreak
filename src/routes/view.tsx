@@ -60,14 +60,7 @@ export const Route = createFileRoute("/view")({
       { name: "robots", content: "noindex" },
     ],
     links: match.search?.src
-      ? [
-          {
-            rel: "preload",
-            as: "image" as const,
-            href: match.search.src,
-            fetchPriority: "high",
-          },
-        ]
+      ? [{ rel: "preload", as: "image" as const, href: match.search.src }]
       : [],
   }),
   component: SharedViewer,
