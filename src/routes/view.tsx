@@ -166,7 +166,6 @@ function SharedViewer() {
                   alt={title}
                   loading="eager"
                   decoding="async"
-                  fetchPriority="high"
                   onLoad={onLoad}
                   onError={onError}
                   initial={{ opacity: 0, scale: 1.02 }}
