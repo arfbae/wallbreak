@@ -93,6 +93,9 @@ function MuralStudio() {
           variant,
           apiKeys: apiKeyState.keys,
           serverFallback: apiKeyState.serverFallback,
+          mode,
+          count,
+
         },
       });
     },
