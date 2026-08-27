@@ -212,7 +212,7 @@ function MuralStudio() {
             onSelect={setSelected}
             retryNonce={retryNonce}
             showDebug={showDebug}
-            count={(filledArtworks.length || 1) as 1 | 2 | 3}
+            count={((mode === "combined" ? count : filledArtworks.length) || 1) as 1 | 2 | 3}
           />
         </section>
 
