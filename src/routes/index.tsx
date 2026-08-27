@@ -28,6 +28,9 @@ function MuralStudio() {
   const [revealOpen, setRevealOpen] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
+  const [mode, setMode] = useState<"separate" | "combined">("separate");
+  const [count, setCount] = useState<1 | 2 | 3>(1);
+
   const [apiKeyState, setApiKeyState] = useState<ApiKeyState>({ keys: [], serverFallback: true });
   const { user } = useAuth();
   const [libraryNonce, setLibraryNonce] = useState(0);
