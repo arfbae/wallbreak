@@ -87,10 +87,11 @@ async function tryOnce(
 
 async function generateOne(
   scene: Scene,
-  artworkDataUrl: string,
+  artworkDataUrls: string[],
   wallDataUrl: string | null,
   variant: "base" | "retry",
   keys: KeyEntry[],
+  extraPrompt?: string,
 ): Promise<{ id: Scene["id"]; name: string; imageUrl: string | null; error?: string; keyUsed?: string }> {
   if (keys.length === 0) {
     return { id: scene.id, name: scene.name, imageUrl: null, error: "No API key available" };
@@ -104,11 +105,14 @@ async function generateOne(
       ? scene.basePrompt
       : scene.retryPrompt;
 
-  const prompt = `${STYLE_LOCK}\n\nSCENE: ${scenePrompt}`;
-  const content: Array<Record<string, unknown>> = [
-    { type: "text", text: prompt },
-    { type: "image_url", image_url: { url: artworkDataUrl } },
-  ];
+  const multi =
+    artworkDataUrls.length > 1
+      ? `\n\nMULTI-ARTWORK COMBINATION: ${artworkDataUrls.length} separate artwork images are provided (they are the first ${artworkDataUrls.length} images${wallDataUrl ? ", the LAST image is the wall photo" : ""}). Incorporate ALL of them into ONE single cohesive mural on the SAME wall plane — arranged side by side along the wall with natural spacing/overlap and a shared painted background so they read as one continuous piece. Each artwork must remain individually recognisable and faithful to its reference (same composition, line work and palette); do not merge them into one hybrid creature, do not drop any of them, do not duplicate one artwork in place of another. Scale them consistently to the wall's real geometry.`
+      : "";
+
+  const prompt = `${STYLE_LOCK}${multi}\n\nSCENE: ${scenePrompt}${extraPrompt ? `\n\n${extraPrompt}` : ""}`;
+  const content: Array<Record<string, unknown>> = [{ type: "text", text: prompt }];
+  for (const a of artworkDataUrls) content.push({ type: "image_url", image_url: { url: a } });
   if (wallDataUrl) content.push({ type: "image_url", image_url: { url: wallDataUrl } });
 
   const body = JSON.stringify({
@@ -116,6 +120,7 @@ async function generateOne(
     messages: [{ role: "user", content }],
     modalities: ["image", "text"],
   });
+
 
   let lastMsg = "All keys failed";
   for (const entry of keys) {
