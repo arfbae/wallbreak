@@ -148,6 +148,7 @@ export const generateMurals = createServerFn({ method: "POST" })
       apiKey?: string | null;
       apiKeys?: string[] | null;
       serverFallback?: boolean;
+      mode?: "separate" | "combined";
       count?: number;
     }) => {
       const artworkList: string[] = [];
@@ -168,12 +169,16 @@ export const generateMurals = createServerFn({ method: "POST" })
       const apiKeys = Array.from(
         new Set(raw.map((k) => (typeof k === "string" ? k.trim() : "")).filter(Boolean)),
       );
+      const mode = input.mode === "combined" ? "combined" : "separate";
+      const count = Math.min(3, Math.max(1, Math.round(input.count ?? 1)));
       return {
         artworks,
         wallDataUrl: input.wallDataUrl ?? null,
         variant: input.variant ?? "base",
         apiKeys,
         serverFallback: input.serverFallback !== false,
+        mode,
+        count,
       };
     },
   )
@@ -185,16 +190,42 @@ export const generateMurals = createServerFn({ method: "POST" })
     if (data.serverFallback && process.env.LOVABLE_API_KEY) {
       keys.push({ key: process.env.LOVABLE_API_KEY, label: "server key" });
     }
+
+    const VARIATIONS = [
+      "",
+      "COMPOSITION VARIATION 2: arrange the artworks in a different order/spacing along the wall and shift the camera slightly, while keeping the same wall, lighting and photographic plate.",
+      "COMPOSITION VARIATION 3: use a different scale relationship between the artworks (one dominant, the others smaller and offset vertically), keeping the same wall, lighting and photographic plate.",
+    ];
+
+    if (data.mode === "combined") {
+      const results = await Promise.all(
+        Array.from({ length: data.count }, (_, i) => {
+          const baseScene = data.wallDataUrl ? SCENES[0] : SCENES[i % SCENES.length];
+          const sceneWithId: Scene = { ...baseScene, id: `${baseScene.id}-${i}` as Scene["id"] };
+          return generateOne(
+            sceneWithId,
+            data.artworks,
+            data.wallDataUrl,
+            data.variant,
+            keys,
+            VARIATIONS[i],
+          ).then((r) => ({ ...r, name: data.count > 1 ? `Mockup ${i + 1}` : "Combined Mural" }));
+        }),
+      );
+      return { murals: results };
+    }
+
     const results = await Promise.all(
       data.artworks.map((artworkDataUrl, i) => {
         // When a wall photo is provided, every mockup uses Scene A's strict
         // background-lock prompt (Scene B/C rewrite/obstruct the photo).
         const baseScene = data.wallDataUrl ? SCENES[0] : SCENES[i % SCENES.length];
         const sceneWithId: Scene = { ...baseScene, id: (`${baseScene.id}-${i}`) as Scene["id"] };
-        return generateOne(sceneWithId, artworkDataUrl, data.wallDataUrl, data.variant, keys)
+        return generateOne(sceneWithId, [artworkDataUrl], data.wallDataUrl, data.variant, keys)
           .then((r) => ({ ...r, name: `Artwork ${i + 1}` }));
       }),
     );
     return { murals: results };
+
   });
 
