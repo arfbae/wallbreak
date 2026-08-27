@@ -139,8 +139,13 @@ export function UploadZone({
   onWall,
   onGenerate,
   isGenerating,
+  mode,
+  onModeChange,
+  count,
+  onCountChange,
 }: Props) {
   const filledCount = artworkUrls.filter(Boolean).length;
+  const outputs = mode === "combined" ? count : filledCount;
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
@@ -172,6 +177,64 @@ export function UploadZone({
       </div>
 
       <div className="flex flex-col gap-3 lg:w-[320px]">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+            05 · Composition Mode
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {(
+              [
+                { id: "separate", label: "Separate", sub: "1 mural per artwork" },
+                { id: "combined", label: "Combined", sub: "all artworks, 1 mural" },
+              ] as const
+            ).map((m) => (
+              <button
+                key={m.id}
+                onClick={() => onModeChange(m.id)}
+                className={cn(
+                  "rounded-xl border px-3 py-2 text-left transition-all",
+                  mode === m.id
+                    ? "border-[var(--studio-accent)]/50 bg-[var(--studio-accent)]/15 text-white"
+                    : "border-white/10 bg-white/[0.02] text-white/60 hover:border-white/25 hover:text-white",
+                )}
+              >
+                <div className="font-display text-sm leading-tight">{m.label}</div>
+                <div className="mt-0.5 text-[10px] leading-tight text-white/45">{m.sub}</div>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+              Mockups
+            </div>
+            <div className="flex gap-1.5">
+              {[1, 2, 3].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => onCountChange(n as 1 | 2 | 3)}
+                  disabled={mode !== "combined"}
+                  className={cn(
+                    "h-8 w-8 rounded-lg border font-mono text-xs transition-all",
+                    mode !== "combined"
+                      ? "cursor-not-allowed border-white/5 bg-white/[0.02] text-white/20"
+                      : count === n
+                        ? "border-[var(--studio-accent)]/50 bg-[var(--studio-accent)]/20 text-white"
+                        : "border-white/10 bg-white/[0.02] text-white/50 hover:border-white/25 hover:text-white",
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+          {mode !== "combined" && (
+            <div className="mt-2 text-[10px] leading-tight text-white/35">
+              Separate mode renders one mockup per uploaded artwork.
+            </div>
+          )}
+        </div>
+
         <button
           onClick={onGenerate}
           disabled={filledCount === 0 || isGenerating}
@@ -184,19 +247,20 @@ export function UploadZone({
         >
           <div className="flex flex-col items-center gap-2">
             <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/50">
-              05 · Render Pipeline
+              06 · Render Pipeline
             </div>
             <div>
               {isGenerating
-                ? `Rendering ${filledCount} mockup${filledCount > 1 ? "s" : ""}…`
+                ? `Rendering ${outputs} mockup${outputs > 1 ? "s" : ""}…`
                 : filledCount === 0
                   ? "Add artwork"
-                  : filledCount === 1
+                  : outputs === 1
                     ? "Generate Mockup"
-                    : `Generate ${filledCount} Mockups`}
+                    : `Generate ${outputs} Mockups`}
             </div>
             <div className="font-mono text-[10px] tracking-wider text-white/40">
-              {filledCount} ARTWORK{filledCount === 1 ? "" : "S"} · ~{Math.max(1, filledCount) * 10}S
+              {filledCount} ARTWORK{filledCount === 1 ? "" : "S"} ·{" "}
+              {mode === "combined" ? "COMBINED" : "SEPARATE"} · ~{Math.max(1, outputs) * 10}S
             </div>
           </div>
           {isGenerating && (
@@ -209,3 +273,4 @@ export function UploadZone({
     </div>
   );
 }
+
