@@ -174,6 +174,11 @@ function MuralStudio() {
             onWall={setWallAndSave}
             onGenerate={() => mutation.mutate("base")}
             isGenerating={mutation.isPending}
+            mode={mode}
+            onModeChange={setMode}
+            count={count}
+            onCountChange={setCount}
+
           />
         </section>
 
