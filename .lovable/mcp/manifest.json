@@ -47,6 +47,22 @@
               ],
               "default": "base",
               "description": "'base' for default composition, 'retry' to recompose lighting/angle."
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "separate",
+                "combined"
+              ],
+              "default": "separate",
+              "description": "'separate' renders one mural per artwork; 'combined' incorporates all artworks into a single mural."
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3,
+              "default": 1,
+              "description": "Number of mockups to render in 'combined' mode (ignored in 'separate' mode)."
             }
           },
           "required": [
