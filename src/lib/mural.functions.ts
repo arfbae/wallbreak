@@ -87,10 +87,11 @@ async function tryOnce(
 
 async function generateOne(
   scene: Scene,
-  artworkDataUrl: string,
+  artworkDataUrls: string[],
   wallDataUrl: string | null,
   variant: "base" | "retry",
   keys: KeyEntry[],
+  extraPrompt?: string,
 ): Promise<{ id: Scene["id"]; name: string; imageUrl: string | null; error?: string; keyUsed?: string }> {
   if (keys.length === 0) {
     return { id: scene.id, name: scene.name, imageUrl: null, error: "No API key available" };
@@ -104,11 +105,14 @@ async function generateOne(
       ? scene.basePrompt
       : scene.retryPrompt;
 
-  const prompt = `${STYLE_LOCK}\n\nSCENE: ${scenePrompt}`;
-  const content: Array<Record<string, unknown>> = [
-    { type: "text", text: prompt },
-    { type: "image_url", image_url: { url: artworkDataUrl } },
-  ];
+  const multi =
+    artworkDataUrls.length > 1
+      ? `\n\nMULTI-ARTWORK COMBINATION: ${artworkDataUrls.length} separate artwork images are provided (they are the first ${artworkDataUrls.length} images${wallDataUrl ? ", the LAST image is the wall photo" : ""}). Incorporate ALL of them into ONE single cohesive mural on the SAME wall plane — arranged side by side along the wall with natural spacing/overlap and a shared painted background so they read as one continuous piece. Each artwork must remain individually recognisable and faithful to its reference (same composition, line work and palette); do not merge them into one hybrid creature, do not drop any of them, do not duplicate one artwork in place of another. Scale them consistently to the wall's real geometry.`
+      : "";
+
+  const prompt = `${STYLE_LOCK}${multi}\n\nSCENE: ${scenePrompt}${extraPrompt ? `\n\n${extraPrompt}` : ""}`;
+  const content: Array<Record<string, unknown>> = [{ type: "text", text: prompt }];
+  for (const a of artworkDataUrls) content.push({ type: "image_url", image_url: { url: a } });
   if (wallDataUrl) content.push({ type: "image_url", image_url: { url: wallDataUrl } });
 
   const body = JSON.stringify({
@@ -116,6 +120,7 @@ async function generateOne(
     messages: [{ role: "user", content }],
     modalities: ["image", "text"],
   });
+
 
   let lastMsg = "All keys failed";
   for (const entry of keys) {
@@ -143,6 +148,7 @@ export const generateMurals = createServerFn({ method: "POST" })
       apiKey?: string | null;
       apiKeys?: string[] | null;
       serverFallback?: boolean;
+      mode?: "separate" | "combined";
       count?: number;
     }) => {
       const artworkList: string[] = [];
@@ -163,12 +169,16 @@ export const generateMurals = createServerFn({ method: "POST" })
       const apiKeys = Array.from(
         new Set(raw.map((k) => (typeof k === "string" ? k.trim() : "")).filter(Boolean)),
       );
+      const mode = input.mode === "combined" ? "combined" : "separate";
+      const count = Math.min(3, Math.max(1, Math.round(input.count ?? 1)));
       return {
         artworks,
         wallDataUrl: input.wallDataUrl ?? null,
         variant: input.variant ?? "base",
         apiKeys,
         serverFallback: input.serverFallback !== false,
+        mode,
+        count,
       };
     },
   )
@@ -180,16 +190,42 @@ export const generateMurals = createServerFn({ method: "POST" })
     if (data.serverFallback && process.env.LOVABLE_API_KEY) {
       keys.push({ key: process.env.LOVABLE_API_KEY, label: "server key" });
     }
+
+    const VARIATIONS = [
+      "",
+      "COMPOSITION VARIATION 2: arrange the artworks in a different order/spacing along the wall and shift the camera slightly, while keeping the same wall, lighting and photographic plate.",
+      "COMPOSITION VARIATION 3: use a different scale relationship between the artworks (one dominant, the others smaller and offset vertically), keeping the same wall, lighting and photographic plate.",
+    ];
+
+    if (data.mode === "combined") {
+      const results = await Promise.all(
+        Array.from({ length: data.count }, (_, i) => {
+          const baseScene = data.wallDataUrl ? SCENES[0] : SCENES[i % SCENES.length];
+          const sceneWithId: Scene = { ...baseScene, id: `${baseScene.id}-${i}` as Scene["id"] };
+          return generateOne(
+            sceneWithId,
+            data.artworks,
+            data.wallDataUrl,
+            data.variant,
+            keys,
+            VARIATIONS[i],
+          ).then((r) => ({ ...r, name: data.count > 1 ? `Mockup ${i + 1}` : "Combined Mural" }));
+        }),
+      );
+      return { murals: results };
+    }
+
     const results = await Promise.all(
       data.artworks.map((artworkDataUrl, i) => {
         // When a wall photo is provided, every mockup uses Scene A's strict
         // background-lock prompt (Scene B/C rewrite/obstruct the photo).
         const baseScene = data.wallDataUrl ? SCENES[0] : SCENES[i % SCENES.length];
         const sceneWithId: Scene = { ...baseScene, id: (`${baseScene.id}-${i}`) as Scene["id"] };
-        return generateOne(sceneWithId, artworkDataUrl, data.wallDataUrl, data.variant, keys)
+        return generateOne(sceneWithId, [artworkDataUrl], data.wallDataUrl, data.variant, keys)
           .then((r) => ({ ...r, name: `Artwork ${i + 1}` }));
       }),
     );
     return { murals: results };
+
   });
 

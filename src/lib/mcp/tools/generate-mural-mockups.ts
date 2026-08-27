@@ -21,9 +21,23 @@ export default defineTool({
       .enum(["base", "retry"])
       .default("base")
       .describe("'base' for default composition, 'retry' to recompose lighting/angle."),
+    mode: z
+      .enum(["separate", "combined"])
+      .default("separate")
+      .describe(
+        "'separate' renders one mural per artwork; 'combined' incorporates all artworks into a single mural.",
+      ),
+    count: z
+      .number()
+      .int()
+      .min(1)
+      .max(3)
+      .default(1)
+      .describe("Number of mockups to render in 'combined' mode (ignored in 'separate' mode)."),
   },
   annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: true },
-  handler: async ({ artworkUrls, wallUrl, variant }) => {
+  handler: async ({ artworkUrls, wallUrl, variant, mode, count }) => {
+
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) {
       return {
@@ -49,8 +63,9 @@ export default defineTool({
 
     const { generateMurals } = await import("@/lib/mural.functions");
     const result = await generateMurals({
-      data: { artworkDataUrls, wallDataUrl, variant, apiKey: null },
+      data: { artworkDataUrls, wallDataUrl, variant, mode, count, apiKey: null },
     });
+
 
     return {
       content: [

@@ -28,6 +28,9 @@ function MuralStudio() {
   const [revealOpen, setRevealOpen] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
+  const [mode, setMode] = useState<"separate" | "combined">("separate");
+  const [count, setCount] = useState<1 | 2 | 3>(1);
+
   const [apiKeyState, setApiKeyState] = useState<ApiKeyState>({ keys: [], serverFallback: true });
   const { user } = useAuth();
   const [libraryNonce, setLibraryNonce] = useState(0);
@@ -90,6 +93,9 @@ function MuralStudio() {
           variant,
           apiKeys: apiKeyState.keys,
           serverFallback: apiKeyState.serverFallback,
+          mode,
+          count,
+
         },
       });
     },
@@ -168,6 +174,11 @@ function MuralStudio() {
             onWall={setWallAndSave}
             onGenerate={() => mutation.mutate("base")}
             isGenerating={mutation.isPending}
+            mode={mode}
+            onModeChange={setMode}
+            count={count}
+            onCountChange={setCount}
+
           />
         </section>
 
@@ -201,7 +212,7 @@ function MuralStudio() {
             onSelect={setSelected}
             retryNonce={retryNonce}
             showDebug={showDebug}
-            count={(filledArtworks.length || 1) as 1 | 2 | 3}
+            count={((mode === "combined" ? count : filledArtworks.length) || 1) as 1 | 2 | 3}
           />
         </section>
 
