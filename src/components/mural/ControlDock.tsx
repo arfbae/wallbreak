@@ -1,4 +1,4 @@
-import { RefreshCw, Play, Crosshair } from "lucide-react";
+import { RefreshCw, Play, Crosshair, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -7,11 +7,13 @@ interface Props {
   onSelect: (id: string) => void;
   onRetry: () => void;
   onReveal: () => void;
+  onProposal: () => void;
   isGenerating: boolean;
   muralIds: string[];
   showDebug: boolean;
   onToggleDebug: () => void;
 }
+
 
 export function ControlDock({
   hasMurals,
