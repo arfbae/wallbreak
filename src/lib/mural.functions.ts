@@ -51,6 +51,31 @@ const SCENES: Scene[] = [
 const STYLE_LOCK =
   "CRITICAL ARTWORK FIDELITY: The mural artwork (FIRST image) must match its reference 1:1 — preserve exact composition, line work, color palette, and every detail. Do not stylize, simplify, crop, or redraw it. CRITICAL BACKGROUND FIDELITY (when a SECOND image is provided): treat that second image as a fixed photographic plate. Return the same photo with only a painted mural added to its primary wall plane. Never invent a new wall, never replace the sky/ground/surroundings, never re-light the scene, never change the camera. The final image must look like the original wall photo with a real mural that was painted onto it — surface texture bleeding through paint at ~8% opacity, mural perspective conforming to the wall's existing geometry, lighting on the paint exactly matching the lighting already in the photo.";
 
+const COMPOSITION_RULES =
+  "COMPOSITION LOGIC (apply strictly, this governs where and how big the painted area sits):\n" +
+  "1. WALL FIT — first read the wall's true paintable rectangle: exclude windows, doors, vents, drainpipes, signage, roof line and the ground/plinth strip. The mural must sit entirely inside that clean rectangle. Never let paint run over a window, door frame or off the edge of the wall.\n" +
+  "2. MARGINS — leave a deliberate unpainted breathing margin of roughly 6-12% of the wall's height on all four sides. The mural must never bleed to the very edge unless the wall plane is fully bounded and flat.\n" +
+  "3. SCALE — the mural occupies about 55-75% of the paintable wall area: large enough to read as a commissioned piece, never a small poster stuck on a big wall and never cramped edge-to-edge.\n" +
+  "4. PLACEMENT — centre of visual mass sits on a rule-of-thirds intersection of the paintable rectangle, with the artwork's focal point (face, eyes, main subject) at roughly 55-65% of the wall height so it reads at street eye level.\n" +
+  "5. ASPECT INTEGRITY — preserve the artwork's original aspect ratio exactly. Scale uniformly; never stretch, squash, rotate or crop the artwork to make it fit. If the ratios disagree, reduce scale and extend clean negative space instead.\n" +
+  "6. PERSPECTIVE — the mural's rectangle is projected onto the wall's real perspective: its edges must be parallel to the wall's own mortar courses, panel seams and vanishing lines, foreshortening consistently with the photo's geometry.\n" +
+  "7. OCCLUSION ORDER — real objects in front of the wall (poles, wires, pipes, plants, cars, people, signage) stay in front of the paint with correct edges and contact shadows; the mural is never painted over them.\n" +
+  "8. BALANCE — no important detail of the artwork falls behind an occluder or into a deep shadow pocket; nudge the placement laterally to keep the focal point clear.\n" +
+  "9. FINISH — flat exterior wall paint: matte, slightly absorbed into the substrate, no gloss, no canvas weave, no picture frame, no drop shadow, no border, no sticker or decal look.";
+
+const LAYOUT_TEMPLATES: Record<number, string[]> = {
+  2: [
+    "LAYOUT — DIPTYCH BALANCE: place the two artworks side by side on one baseline, equal visual weight, separated by a gap of about 8% of the mural width, their vertical centres aligned.",
+    "LAYOUT — LEAD AND ECHO: one artwork at ~60% of the mural width anchored on the left third, the second at ~40% offset slightly higher on the right, overlapping painted background tying them together.",
+    "LAYOUT — STAGGERED PAIR: artworks offset diagonally (one lower-left, one upper-right) with generous negative space on the opposing corners, still inside the paintable rectangle.",
+  ],
+  3: [
+    "LAYOUT — FRIEZE: the three artworks in a single horizontal row along one shared baseline, even spacing, equal heights, reading left to right as one continuous band.",
+    "LAYOUT — HERO AND SATELLITES: one dominant artwork at ~50% of the mural width centred slightly left, the other two smaller (~25% each) stacked vertically on the right with aligned outer edges.",
+    "LAYOUT — TRIANGULAR RHYTHM: two artworks on the lower baseline and one raised between and above them, forming a stable triangle of focal points; connect with a shared painted background wash.",
+  ],
+};
+
 type KeyEntry = { key: string; label: string };
 
 async function tryOnce(
