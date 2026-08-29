@@ -9,6 +9,8 @@ import { UploadZone } from "@/components/mural/UploadZone";
 import { MuralTriptych, type Mural } from "@/components/mural/MuralTriptych";
 import { ControlDock } from "@/components/mural/ControlDock";
 import { CinematicReveal } from "@/components/mural/CinematicReveal";
+import { ProposalDialog } from "@/components/mural/ProposalDialog";
+
 import { ApiKeyField, loadStoredApiKeyState, type ApiKeyState } from "@/components/mural/ApiKeyField";
 import { LibraryPanel } from "@/components/mural/LibraryPanel";
 import { AuthPill } from "@/components/mural/AuthPill";
@@ -26,6 +28,8 @@ function MuralStudio() {
   const [murals, setMurals] = useState<Mural[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [revealOpen, setRevealOpen] = useState(false);
+  const [proposalOpen, setProposalOpen] = useState(false);
+
   const [retryNonce, setRetryNonce] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
   const [mode, setMode] = useState<"separate" | "combined">("separate");
@@ -224,6 +228,8 @@ function MuralStudio() {
             onSelect={setSelected}
             onRetry={() => mutation.mutate("retry")}
             onReveal={() => setRevealOpen(true)}
+            onProposal={() => setProposalOpen(true)}
+
             isGenerating={mutation.isPending}
             muralIds={muralIds}
             showDebug={showDebug}
@@ -242,6 +248,16 @@ function MuralStudio() {
         name={selectedMural?.name ?? null}
         onClose={() => setRevealOpen(false)}
       />
+
+      <ProposalDialog
+        open={proposalOpen}
+        onOpenChange={setProposalOpen}
+        muralImageUrl={selectedMural?.imageUrl ?? null}
+        sceneName={selectedMural?.name ?? null}
+        wallImageUrl={wall}
+        artworkImageUrls={filledArtworks}
+      />
     </main>
+
   );
 }

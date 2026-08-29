@@ -1,4 +1,4 @@
-import { RefreshCw, Play, Crosshair } from "lucide-react";
+import { RefreshCw, Play, Crosshair, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -7,11 +7,13 @@ interface Props {
   onSelect: (id: string) => void;
   onRetry: () => void;
   onReveal: () => void;
+  onProposal: () => void;
   isGenerating: boolean;
   muralIds: string[];
   showDebug: boolean;
   onToggleDebug: () => void;
 }
+
 
 export function ControlDock({
   hasMurals,
@@ -19,6 +21,8 @@ export function ControlDock({
   onSelect,
   onRetry,
   onReveal,
+  onProposal,
+
   isGenerating,
   muralIds,
   showDebug,
@@ -85,6 +89,20 @@ export function ControlDock({
           Smart Retry
         </button>
         <button
+          onClick={onProposal}
+          disabled={!selected}
+          className={cn(
+            "flex h-10 items-center gap-2 rounded-lg border px-4 font-mono text-xs uppercase tracking-[0.15em] transition-all",
+            selected
+              ? "border-white/15 bg-white/[0.04] text-white/80 hover:border-white/30 hover:bg-white/10"
+              : "cursor-not-allowed border-white/5 text-white/20",
+          )}
+        >
+          <FileText className="h-3.5 w-3.5" />
+          Proposal PDF
+        </button>
+        <button
+
           onClick={onReveal}
           disabled={!selected}
           className={cn(
