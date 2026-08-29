@@ -222,9 +222,9 @@ export const generateMurals = createServerFn({ method: "POST" })
     }
 
     const VARIATIONS = [
-      "",
-      "COMPOSITION VARIATION 2: arrange the artworks in a different order/spacing along the wall and shift the camera slightly, while keeping the same wall, lighting and photographic plate.",
-      "COMPOSITION VARIATION 3: use a different scale relationship between the artworks (one dominant, the others smaller and offset vertically), keeping the same wall, lighting and photographic plate.",
+      "COMPOSITION VARIATION 1: the balanced, canonical arrangement described in the layout instruction above.",
+      "COMPOSITION VARIATION 2: keep the same wall, camera, crop and lighting, but re-solve the composition — different left-to-right order and wider rhythm of spacing, mural sitting slightly lower on the wall with more headroom above.",
+      "COMPOSITION VARIATION 3: keep the same wall, camera, crop and lighting, but re-solve the composition — a clear scale hierarchy (one dominant piece, the others smaller and vertically offset) with asymmetric negative space.",
     ];
 
     if (data.mode === "combined") {
@@ -239,6 +239,7 @@ export const generateMurals = createServerFn({ method: "POST" })
             data.variant,
             keys,
             VARIATIONS[i],
+            i,
           ).then((r) => ({ ...r, name: data.count > 1 ? `Mockup ${i + 1}` : "Combined Mural" }));
         }),
       );
