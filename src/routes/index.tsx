@@ -9,6 +9,8 @@ import { UploadZone } from "@/components/mural/UploadZone";
 import { MuralTriptych, type Mural } from "@/components/mural/MuralTriptych";
 import { ControlDock } from "@/components/mural/ControlDock";
 import { CinematicReveal } from "@/components/mural/CinematicReveal";
+import { ProposalDialog } from "@/components/mural/ProposalDialog";
+
 import { ApiKeyField, loadStoredApiKeyState, type ApiKeyState } from "@/components/mural/ApiKeyField";
 import { LibraryPanel } from "@/components/mural/LibraryPanel";
 import { AuthPill } from "@/components/mural/AuthPill";
@@ -246,6 +248,16 @@ function MuralStudio() {
         name={selectedMural?.name ?? null}
         onClose={() => setRevealOpen(false)}
       />
+
+      <ProposalDialog
+        open={proposalOpen}
+        onOpenChange={setProposalOpen}
+        muralImageUrl={selectedMural?.imageUrl ?? null}
+        sceneName={selectedMural?.name ?? null}
+        wallImageUrl={wall}
+        artworkImageUrls={filledArtworks}
+      />
     </main>
+
   );
 }
