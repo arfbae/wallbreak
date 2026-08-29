@@ -26,6 +26,8 @@ function MuralStudio() {
   const [murals, setMurals] = useState<Mural[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [revealOpen, setRevealOpen] = useState(false);
+  const [proposalOpen, setProposalOpen] = useState(false);
+
   const [retryNonce, setRetryNonce] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
   const [mode, setMode] = useState<"separate" | "combined">("separate");
