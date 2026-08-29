@@ -51,6 +51,31 @@ const SCENES: Scene[] = [
 const STYLE_LOCK =
   "CRITICAL ARTWORK FIDELITY: The mural artwork (FIRST image) must match its reference 1:1 — preserve exact composition, line work, color palette, and every detail. Do not stylize, simplify, crop, or redraw it. CRITICAL BACKGROUND FIDELITY (when a SECOND image is provided): treat that second image as a fixed photographic plate. Return the same photo with only a painted mural added to its primary wall plane. Never invent a new wall, never replace the sky/ground/surroundings, never re-light the scene, never change the camera. The final image must look like the original wall photo with a real mural that was painted onto it — surface texture bleeding through paint at ~8% opacity, mural perspective conforming to the wall's existing geometry, lighting on the paint exactly matching the lighting already in the photo.";
 
+const COMPOSITION_RULES =
+  "COMPOSITION LOGIC (apply strictly, this governs where and how big the painted area sits):\n" +
+  "1. WALL FIT — first read the wall's true paintable rectangle: exclude windows, doors, vents, drainpipes, signage, roof line and the ground/plinth strip. The mural must sit entirely inside that clean rectangle. Never let paint run over a window, door frame or off the edge of the wall.\n" +
+  "2. MARGINS — leave a deliberate unpainted breathing margin of roughly 6-12% of the wall's height on all four sides. The mural must never bleed to the very edge unless the wall plane is fully bounded and flat.\n" +
+  "3. SCALE — the mural occupies about 55-75% of the paintable wall area: large enough to read as a commissioned piece, never a small poster stuck on a big wall and never cramped edge-to-edge.\n" +
+  "4. PLACEMENT — centre of visual mass sits on a rule-of-thirds intersection of the paintable rectangle, with the artwork's focal point (face, eyes, main subject) at roughly 55-65% of the wall height so it reads at street eye level.\n" +
+  "5. ASPECT INTEGRITY — preserve the artwork's original aspect ratio exactly. Scale uniformly; never stretch, squash, rotate or crop the artwork to make it fit. If the ratios disagree, reduce scale and extend clean negative space instead.\n" +
+  "6. PERSPECTIVE — the mural's rectangle is projected onto the wall's real perspective: its edges must be parallel to the wall's own mortar courses, panel seams and vanishing lines, foreshortening consistently with the photo's geometry.\n" +
+  "7. OCCLUSION ORDER — real objects in front of the wall (poles, wires, pipes, plants, cars, people, signage) stay in front of the paint with correct edges and contact shadows; the mural is never painted over them.\n" +
+  "8. BALANCE — no important detail of the artwork falls behind an occluder or into a deep shadow pocket; nudge the placement laterally to keep the focal point clear.\n" +
+  "9. FINISH — flat exterior wall paint: matte, slightly absorbed into the substrate, no gloss, no canvas weave, no picture frame, no drop shadow, no border, no sticker or decal look.";
+
+const LAYOUT_TEMPLATES: Record<number, string[]> = {
+  2: [
+    "LAYOUT — DIPTYCH BALANCE: place the two artworks side by side on one baseline, equal visual weight, separated by a gap of about 8% of the mural width, their vertical centres aligned.",
+    "LAYOUT — LEAD AND ECHO: one artwork at ~60% of the mural width anchored on the left third, the second at ~40% offset slightly higher on the right, overlapping painted background tying them together.",
+    "LAYOUT — STAGGERED PAIR: artworks offset diagonally (one lower-left, one upper-right) with generous negative space on the opposing corners, still inside the paintable rectangle.",
+  ],
+  3: [
+    "LAYOUT — FRIEZE: the three artworks in a single horizontal row along one shared baseline, even spacing, equal heights, reading left to right as one continuous band.",
+    "LAYOUT — HERO AND SATELLITES: one dominant artwork at ~50% of the mural width centred slightly left, the other two smaller (~25% each) stacked vertically on the right with aligned outer edges.",
+    "LAYOUT — TRIANGULAR RHYTHM: two artworks on the lower baseline and one raised between and above them, forming a stable triangle of focal points; connect with a shared painted background wash.",
+  ],
+};
+
 type KeyEntry = { key: string; label: string };
 
 async function tryOnce(
@@ -92,6 +117,7 @@ async function generateOne(
   variant: "base" | "retry",
   keys: KeyEntry[],
   extraPrompt?: string,
+  layoutIndex = 0,
 ): Promise<{ id: Scene["id"]; name: string; imageUrl: string | null; error?: string; keyUsed?: string }> {
   if (keys.length === 0) {
     return { id: scene.id, name: scene.name, imageUrl: null, error: "No API key available" };
@@ -105,12 +131,16 @@ async function generateOne(
       ? scene.basePrompt
       : scene.retryPrompt;
 
+  const n = artworkDataUrls.length;
+  const templates = LAYOUT_TEMPLATES[n];
+  const layout = templates ? templates[layoutIndex % templates.length] : "";
+
   const multi =
-    artworkDataUrls.length > 1
-      ? `\n\nMULTI-ARTWORK COMBINATION: ${artworkDataUrls.length} separate artwork images are provided (they are the first ${artworkDataUrls.length} images${wallDataUrl ? ", the LAST image is the wall photo" : ""}). Incorporate ALL of them into ONE single cohesive mural on the SAME wall plane — arranged side by side along the wall with natural spacing/overlap and a shared painted background so they read as one continuous piece. Each artwork must remain individually recognisable and faithful to its reference (same composition, line work and palette); do not merge them into one hybrid creature, do not drop any of them, do not duplicate one artwork in place of another. Scale them consistently to the wall's real geometry.`
+    n > 1
+      ? `\n\nMULTI-ARTWORK COMBINATION: ${n} separate artwork images are provided (they are the first ${n} images${wallDataUrl ? ", the LAST image is the wall photo" : ""}). Incorporate ALL of them into ONE single cohesive mural on the SAME wall plane, sharing one painted background so they read as one continuous commissioned piece. Each artwork must remain individually recognisable and faithful to its reference (same composition, line work and palette); do not merge them into one hybrid creature, do not drop any of them, do not duplicate one artwork in place of another. Treat the group as a single composition: one shared baseline or deliberate offset grid, consistent relative scale, and even rhythm of negative space between pieces.\n${layout}`
       : "";
 
-  const prompt = `${STYLE_LOCK}${multi}\n\nSCENE: ${scenePrompt}${extraPrompt ? `\n\n${extraPrompt}` : ""}`;
+  const prompt = `${STYLE_LOCK}\n\n${COMPOSITION_RULES}${multi}\n\nSCENE: ${scenePrompt}${extraPrompt ? `\n\n${extraPrompt}` : ""}\n\nFINAL SELF-CHECK before returning the image: is every artwork fully inside the paintable wall rectangle with clean margins, at correct original aspect ratio, focal point unobstructed, edges following the wall's perspective, real foreground objects still in front, and the paint matte with wall texture reading through? If not, fix it before rendering.`;
   const content: Array<Record<string, unknown>> = [{ type: "text", text: prompt }];
   for (const a of artworkDataUrls) content.push({ type: "image_url", image_url: { url: a } });
   if (wallDataUrl) content.push({ type: "image_url", image_url: { url: wallDataUrl } });
@@ -192,9 +222,9 @@ export const generateMurals = createServerFn({ method: "POST" })
     }
 
     const VARIATIONS = [
-      "",
-      "COMPOSITION VARIATION 2: arrange the artworks in a different order/spacing along the wall and shift the camera slightly, while keeping the same wall, lighting and photographic plate.",
-      "COMPOSITION VARIATION 3: use a different scale relationship between the artworks (one dominant, the others smaller and offset vertically), keeping the same wall, lighting and photographic plate.",
+      "COMPOSITION VARIATION 1: the balanced, canonical arrangement described in the layout instruction above.",
+      "COMPOSITION VARIATION 2: keep the same wall, camera, crop and lighting, but re-solve the composition — different left-to-right order and wider rhythm of spacing, mural sitting slightly lower on the wall with more headroom above.",
+      "COMPOSITION VARIATION 3: keep the same wall, camera, crop and lighting, but re-solve the composition — a clear scale hierarchy (one dominant piece, the others smaller and vertically offset) with asymmetric negative space.",
     ];
 
     if (data.mode === "combined") {
@@ -209,6 +239,7 @@ export const generateMurals = createServerFn({ method: "POST" })
             data.variant,
             keys,
             VARIATIONS[i],
+            i,
           ).then((r) => ({ ...r, name: data.count > 1 ? `Mockup ${i + 1}` : "Combined Mural" }));
         }),
       );
