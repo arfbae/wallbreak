@@ -117,6 +117,7 @@ async function generateOne(
   variant: "base" | "retry",
   keys: KeyEntry[],
   extraPrompt?: string,
+  layoutIndex = 0,
 ): Promise<{ id: Scene["id"]; name: string; imageUrl: string | null; error?: string; keyUsed?: string }> {
   if (keys.length === 0) {
     return { id: scene.id, name: scene.name, imageUrl: null, error: "No API key available" };
@@ -130,12 +131,16 @@ async function generateOne(
       ? scene.basePrompt
       : scene.retryPrompt;
 
+  const n = artworkDataUrls.length;
+  const templates = LAYOUT_TEMPLATES[n];
+  const layout = templates ? templates[layoutIndex % templates.length] : "";
+
   const multi =
-    artworkDataUrls.length > 1
-      ? `\n\nMULTI-ARTWORK COMBINATION: ${artworkDataUrls.length} separate artwork images are provided (they are the first ${artworkDataUrls.length} images${wallDataUrl ? ", the LAST image is the wall photo" : ""}). Incorporate ALL of them into ONE single cohesive mural on the SAME wall plane — arranged side by side along the wall with natural spacing/overlap and a shared painted background so they read as one continuous piece. Each artwork must remain individually recognisable and faithful to its reference (same composition, line work and palette); do not merge them into one hybrid creature, do not drop any of them, do not duplicate one artwork in place of another. Scale them consistently to the wall's real geometry.`
+    n > 1
+      ? `\n\nMULTI-ARTWORK COMBINATION: ${n} separate artwork images are provided (they are the first ${n} images${wallDataUrl ? ", the LAST image is the wall photo" : ""}). Incorporate ALL of them into ONE single cohesive mural on the SAME wall plane, sharing one painted background so they read as one continuous commissioned piece. Each artwork must remain individually recognisable and faithful to its reference (same composition, line work and palette); do not merge them into one hybrid creature, do not drop any of them, do not duplicate one artwork in place of another. Treat the group as a single composition: one shared baseline or deliberate offset grid, consistent relative scale, and even rhythm of negative space between pieces.\n${layout}`
       : "";
 
-  const prompt = `${STYLE_LOCK}${multi}\n\nSCENE: ${scenePrompt}${extraPrompt ? `\n\n${extraPrompt}` : ""}`;
+  const prompt = `${STYLE_LOCK}\n\n${COMPOSITION_RULES}${multi}\n\nSCENE: ${scenePrompt}${extraPrompt ? `\n\n${extraPrompt}` : ""}\n\nFINAL SELF-CHECK before returning the image: is every artwork fully inside the paintable wall rectangle with clean margins, at correct original aspect ratio, focal point unobstructed, edges following the wall's perspective, real foreground objects still in front, and the paint matte with wall texture reading through? If not, fix it before rendering.`;
   const content: Array<Record<string, unknown>> = [{ type: "text", text: prompt }];
   for (const a of artworkDataUrls) content.push({ type: "image_url", image_url: { url: a } });
   if (wallDataUrl) content.push({ type: "image_url", image_url: { url: wallDataUrl } });
