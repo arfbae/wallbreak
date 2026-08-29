@@ -224,6 +224,8 @@ function MuralStudio() {
             onSelect={setSelected}
             onRetry={() => mutation.mutate("retry")}
             onReveal={() => setRevealOpen(true)}
+            onProposal={() => setProposalOpen(true)}
+
             isGenerating={mutation.isPending}
             muralIds={muralIds}
             showDebug={showDebug}
