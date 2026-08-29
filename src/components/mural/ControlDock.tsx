@@ -21,6 +21,8 @@ export function ControlDock({
   onSelect,
   onRetry,
   onReveal,
+  onProposal,
+
   isGenerating,
   muralIds,
   showDebug,
