@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { formatMoney, type QuoteResult } from "@/lib/quote";
 
 export interface ProposalInput {
   clientName: string;
