@@ -217,9 +217,40 @@ export const generateMurals = createServerFn({ method: "POST" })
       key: k,
       label: `user key ${i + 1}`,
     }));
+
+    // Server key is a metered resource: signed-in users only, rolling 24h quota.
+    let quotaUserId: string | null = null;
     if (data.serverFallback && process.env.LOVABLE_API_KEY) {
-      keys.push({ key: process.env.LOVABLE_API_KEY, label: "server key" });
+      const { resolveCaller, checkServerKeyQuota, SERVER_KEY_DAILY_LIMIT } = await import(
+        "./gen-guard.server"
+      );
+      const { userId } = await resolveCaller();
+      if (userId) {
+        const quota = await checkServerKeyQuota(userId);
+        if (quota.allowed) {
+          quotaUserId = userId;
+          keys.push({ key: process.env.LOVABLE_API_KEY, label: "server key" });
+        } else if (keys.length === 0) {
+          throw new Error(
+            `Daily limit reached (${SERVER_KEY_DAILY_LIMIT} renders / 24h on the shared key). Add your own API key to keep going, or try again later.`,
+          );
+        }
+      } else if (keys.length === 0) {
+        throw new Error("Sign in to use the shared render key, or add your own API key.");
+      }
     }
+    if (keys.length === 0) {
+      throw new Error("No API key available. Add your own key or sign in to use the shared key.");
+    }
+
+    const meter = async <T extends { keyUsed?: string }>(results: T[]): Promise<T[]> => {
+      if (!quotaUserId) return results;
+      const used = results.filter((r) => r.keyUsed === "server key").length;
+      const { recordServerKeyUsage } = await import("./gen-guard.server");
+      await recordServerKeyUsage(quotaUserId, used);
+      return results;
+    };
+
 
     const VARIATIONS = [
       "COMPOSITION VARIATION 1: the balanced, canonical arrangement described in the layout instruction above.",
