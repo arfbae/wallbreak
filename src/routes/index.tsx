@@ -18,8 +18,27 @@ import { saveLibraryItem, migrateLocalToCloudIfNeeded } from "@/lib/library";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Mural Mockup Studio — AI Wall Mural Visualiser" },
+      {
+        name: "description",
+        content:
+          "Upload your artwork and a wall photo to render photorealistic mural mockups in seconds, then export a branded client proposal PDF.",
+      },
+      { property: "og:title", content: "Mural Mockup Studio — AI Wall Mural Visualiser" },
+      {
+        property: "og:description",
+        content:
+          "Photorealistic mural mockups from your own artwork and wall photos, with cinematic reveals and PDF proposals.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: MuralStudio,
 });
+
 
 function MuralStudio() {
   const generate = useServerFn(generateMurals);
