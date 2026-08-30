@@ -14,6 +14,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { generateProposalPdf, downloadBlob } from "@/lib/proposal";
+import {
+  DEFAULT_QUOTE,
+  computeQuote,
+  formatMoney,
+  quoteSummary,
+  type QuoteInput,
+} from "@/lib/quote";
+
+const QUOTE_FIELDS: Array<{ key: keyof QuoteInput; label: string; step?: string }> = [
+  { key: "widthM", label: "Wall width (m)", step: "0.1" },
+  { key: "heightM", label: "Wall height (m)", step: "0.1" },
+  { key: "ratePerSqm", label: "Rate per m²" },
+  { key: "prepHours", label: "Prep hours" },
+  { key: "prepRate", label: "Prep rate / h" },
+  { key: "designFee", label: "Design fee" },
+  { key: "equipment", label: "Access equipment" },
+  { key: "travelKm", label: "Travel (km)" },
+  { key: "travelRate", label: "Travel rate / km", step: "0.05" },
+  { key: "contingencyPct", label: "Contingency %" },
+  { key: "taxPct", label: "Tax %" },
+];
 
 interface Props {
   open: boolean;

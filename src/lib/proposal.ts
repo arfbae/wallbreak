@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { formatMoney, type QuoteResult } from "@/lib/quote";
 
 export interface ProposalInput {
   clientName: string;
@@ -12,6 +13,7 @@ export interface ProposalInput {
   muralImageUrl: string;
   wallImageUrl?: string | null;
   artworkImageUrls?: string[];
+  quote?: QuoteResult | null;
 }
 
 const PAGE_W = 595.28; // A4 portrait pt
@@ -153,8 +155,72 @@ Included: surface cleaning and priming, projection/grid layout, exterior-grade a
   }
   drawFooter(doc, 2, title);
 
-  // ---------- Page 3: terms + sign-off ----------
+  let pageNo = 2;
+
+  // ---------- Optional page: itemised quote ----------
+  const q = input.quote;
+  if (q) {
+    doc.addPage();
+    pageNo += 1;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(...INK);
+    doc.text("Investment Breakdown", M, 78);
+    doc.setDrawColor(...ACCENT);
+    doc.setLineWidth(2);
+    doc.line(M, 88, M + 46, 88);
+    doc.setLineWidth(1);
+
+    label(doc, `Painted area · ${q.areaSqm} m²`, M, 110);
+
+    let qy = 140;
+    const right = PAGE_W - M;
+    q.lines.forEach((l) => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.setTextColor(...INK);
+      doc.text(l.label, M, qy);
+      doc.text(formatMoney(l.amount, q.currency), right, qy, { align: "right" });
+      doc.setFont("courier", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(...MUTED);
+      doc.text(l.detail.toUpperCase(), M, qy + 12);
+      doc.setDrawColor(232, 234, 238);
+      doc.line(M, qy + 22, right, qy + 22);
+      qy += 40;
+    });
+
+    const totals: Array<[string, number, boolean]> = [
+      ["Subtotal", q.subtotal, false],
+      ["Contingency", q.contingency, false],
+      ["Tax", q.tax, false],
+      ["Total", q.total, true],
+    ].filter(([, v]) => (v as number) > 0 || v === q.total) as Array<[string, number, boolean]>;
+
+    qy += 8;
+    totals.forEach(([k, v, bold]) => {
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.setFontSize(bold ? 13 : 11);
+      doc.setTextColor(...INK);
+      doc.text(k, PAGE_W - M - 200, qy);
+      doc.text(formatMoney(v, q.currency), right, qy, { align: "right" });
+      qy += bold ? 0 : 22;
+    });
+
+    doc.setFont("courier", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...MUTED);
+    doc.text(
+      "ESTIMATE BASED ON SUPPLIED WALL DIMENSIONS · FINAL FIGURE CONFIRMED AFTER SITE INSPECTION",
+      M,
+      qy + 46,
+    );
+    drawFooter(doc, pageNo, title);
+  }
+
+  // ---------- Terms + sign-off ----------
   doc.addPage();
+  pageNo += 1;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(...INK);
@@ -191,7 +257,7 @@ Included: surface cleaning and priming, projection/grid layout, exterior-grade a
   label(doc, "Client signature", M, sy + 16);
   label(doc, "Artist signature", PAGE_W - M - 210, sy + 16);
   label(doc, `Prepared for ${input.clientName || "client"} · ${today}`, M, sy + 52);
-  drawFooter(doc, 3, title);
+  drawFooter(doc, pageNo, title);
 
   return doc.output("blob");
 }
