@@ -5,8 +5,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 
 export const Route = createFileRoute("/auth")({
+  head: () => ({
+    meta: [
+      { title: "Sign In — Mural Mockup Studio" },
+      {
+        name: "description",
+        content:
+          "Sign in to Mural Mockup Studio to sync your artwork and wall library across devices and render mural mockups on the shared AI key.",
+      },
+      { property: "og:title", content: "Sign In — Mural Mockup Studio" },
+      {
+        property: "og:description",
+        content: "Access your cloud library of artworks, wall photos and mural mockups.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
   component: AuthPage,
 });
+
 
 function AuthPage() {
   const navigate = useNavigate();
