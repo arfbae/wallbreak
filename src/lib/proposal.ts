@@ -257,7 +257,7 @@ Included: surface cleaning and priming, projection/grid layout, exterior-grade a
   label(doc, "Client signature", M, sy + 16);
   label(doc, "Artist signature", PAGE_W - M - 210, sy + 16);
   label(doc, `Prepared for ${input.clientName || "client"} · ${today}`, M, sy + 52);
-  drawFooter(doc, 3, title);
+  drawFooter(doc, pageNo, title);
 
   return doc.output("blob");
 }
