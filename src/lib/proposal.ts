@@ -13,6 +13,7 @@ export interface ProposalInput {
   muralImageUrl: string;
   wallImageUrl?: string | null;
   artworkImageUrls?: string[];
+  quote?: QuoteResult | null;
 }
 
 const PAGE_W = 595.28; // A4 portrait pt
