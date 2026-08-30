@@ -274,7 +274,7 @@ export const generateMurals = createServerFn({ method: "POST" })
           ).then((r) => ({ ...r, name: data.count > 1 ? `Mockup ${i + 1}` : "Combined Mural" }));
         }),
       );
-      return { murals: results };
+      return { murals: await meter(results) };
     }
 
     const results = await Promise.all(
@@ -287,7 +287,7 @@ export const generateMurals = createServerFn({ method: "POST" })
           .then((r) => ({ ...r, name: `Artwork ${i + 1}` }));
       }),
     );
-    return { murals: results };
+    return { murals: await meter(results) };
 
   });
 
