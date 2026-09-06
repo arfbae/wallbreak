@@ -80,8 +80,19 @@ async function tryOnce(
     }
     const data = await res.json();
     const imageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url ?? null;
+    const responseText: string | null = data?.choices?.[0]?.message?.content ?? null;
+    const medium = checkResponseMedium(typeof responseText === "string" ? responseText : null);
+    if (!medium.ok) {
+      console.warn(
+        `[mural:medium-guard] WRONG MEDIUM/STYLE reported by renderer — offending terms: ${medium.offenders.join(", ")}`,
+      );
+    } else {
+      console.info("[mural:medium-guard] OK — renderer reported no wrong-medium terms");
+    }
     if (!imageUrl) return { ok: false, status: 200, msg: "No image returned" };
+    console.info("[mural:render] image returned");
     return { ok: true, imageUrl };
+
   } catch (err) {
     return { ok: false, status: 0, msg: err instanceof Error ? err.message : "Network error" };
   }
