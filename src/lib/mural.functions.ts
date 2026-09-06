@@ -109,16 +109,16 @@ async function generateOne(
       : scene.retryPrompt;
 
   const n = artworkDataUrls.length;
-  const templates = LAYOUT_TEMPLATES[n];
-  const layout = templates ? templates[layoutIndex % templates.length] : "";
-
-  const multi =
-    n > 1
-      ? `\n\nMULTI-ARTWORK COMBINATION: ${n} separate artwork images are provided (they are the first ${n} images${wallDataUrl ? ", the LAST image is the wall photo" : ""}). Incorporate ALL of them into ONE single cohesive mural on the SAME wall plane, sharing one painted background so they read as one continuous commissioned piece. Each artwork must remain individually recognisable and faithful to its reference (same composition, line work and palette); do not merge them into one hybrid creature, do not drop any of them, do not duplicate one artwork in place of another. Treat the group as a single composition: one shared baseline or deliberate offset grid, consistent relative scale, and even rhythm of negative space between pieces.\n${layout}`
-      : "";
-
-  const prompt = `${ANTI_GHOST}\n\n${MEDIUM_TRANSLATION}\n\n${STYLE_LOCK}\n\n${COMPOSITION_RULES}${multi}\n\nSCENE: ${scenePrompt}${extraPrompt ? `\n\n${extraPrompt}` : ""}\n\nFINAL SELF-CHECK before returning the image: is the artwork fully re-executed in real exterior mural medium (aerosol/acrylic at building scale — soft overspray gradients, visible brush/roller texture, thick opaque line work re-drawn at scale, matte finish, NO paper grain/canvas weave/frame/border/white margin/rectangular edge, NO visible boundary where the paint ends), is the paint fully opaque with zero ghosting/transparency and zero artwork pixels off the wall plane, is every artwork fully inside the paintable wall rectangle with clean margins, at correct original aspect ratio, focal point unobstructed, edges following the wall's perspective, real foreground objects still in front, and the paint matte and fully opaque? If not, fix it before rendering.`;
+  const prompt = buildMuralPrompt({
+    scenePrompt,
+    artworkCount: n,
+    hasWall: Boolean(wallDataUrl),
+    extraPrompt,
+    layoutIndex,
+  });
+  assertPromptIntegrity(prompt, `scene=${scene.id} variant=${variant} artworks=${n}`);
   const content: Array<Record<string, unknown>> = [{ type: "text", text: prompt }];
+
   for (const a of artworkDataUrls) content.push({ type: "image_url", image_url: { url: a } });
   if (wallDataUrl) content.push({ type: "image_url", image_url: { url: wallDataUrl } });
 
