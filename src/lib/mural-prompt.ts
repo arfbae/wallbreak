@@ -26,18 +26,32 @@ export const COMPOSITION_RULES =
   "8. BALANCE — no important detail of the artwork falls behind an occluder or into a deep shadow pocket; nudge the placement laterally to keep the focal point clear.\n" +
   "9. FINISH — flat exterior wall paint: matte, slightly absorbed into the substrate, no gloss, no canvas weave, no picture frame, no drop shadow, no border, no sticker or decal look.";
 
+/**
+ * Classical proportion system applied when more than one artwork shares a wall.
+ * Golden ratio (1:1.618), Fibonacci step sizing and rule-of-thirds anchoring.
+ */
+export const GOLDEN_GEOMETRY =
+  "PROPORTION SYSTEM (golden ratio / Fibonacci / rule of thirds — apply to the combined composition):\n" +
+  "A. Divide the paintable wall rectangle with a golden section: the major band is 61.8% of the width, the minor band 38.2%. All artwork blocks snap to these divisions or to their nested golden subdivisions (61.8% of 38.2% = 23.6%).\n" +
+  "B. Relative sizes follow the Fibonacci sequence 8 : 5 : 3 — the dominant artwork reads at 8 units of height, the second at 5, the third at 3. Never give three pieces identical size unless the layout explicitly calls for a frieze.\n" +
+  "C. Anchor focal points on rule-of-thirds intersections of the paintable rectangle: the dominant piece's focal point on one intersection, the secondary pieces on or near the opposing intersections, so the eye travels a triangular path.\n" +
+  "D. Gaps between pieces follow the same ratio: the wide gap is 1.618× the narrow gap; the outer margins are at least as large as the widest internal gap so the group reads as one framed composition.\n" +
+  "E. Baselines: align pieces to a golden-section horizontal (the lower third line at ~38.2% from the bottom) rather than dead centre. Optical centre, never geometric centre.\n" +
+  "F. The whole painted group's bounding box should itself approximate a golden rectangle (or two stacked golden rectangles) inside the wall's clean area.";
+
 export const LAYOUT_TEMPLATES: Record<number, string[]> = {
   2: [
-    "LAYOUT — DIPTYCH BALANCE: place the two artworks side by side on one baseline, equal visual weight, separated by a gap of about 8% of the mural width, their vertical centres aligned.",
-    "LAYOUT — LEAD AND ECHO: one artwork at ~60% of the mural width anchored on the left third, the second at ~40% offset slightly higher on the right, overlapping painted background tying them together.",
-    "LAYOUT — STAGGERED PAIR: artworks offset diagonally (one lower-left, one upper-right) with generous negative space on the opposing corners, still inside the paintable rectangle.",
+    "LAYOUT — GOLDEN DIPTYCH: split the mural width by the golden section — the larger artwork fills the 61.8% band, the smaller the 38.2% band, sharing one baseline on the lower-third line, separated by a gap of about 8% of the mural width.",
+    "LAYOUT — LEAD AND ECHO: the lead artwork occupies the 61.8% band anchored on the left third, the echo fills the 38.2% band offset upward so its focal point lands on the upper-right thirds intersection; one shared painted background ties them together.",
+    "LAYOUT — STAGGERED PHI PAIR: artworks offset diagonally along a golden spiral (one lower-left at 8 units, one upper-right at 5 units), generous negative space on the opposing corners, still inside the paintable rectangle.",
   ],
   3: [
-    "LAYOUT — FRIEZE: the three artworks in a single horizontal row along one shared baseline, even spacing, equal heights, reading left to right as one continuous band.",
-    "LAYOUT — HERO AND SATELLITES: one dominant artwork at ~50% of the mural width centred slightly left, the other two smaller (~25% each) stacked vertically on the right with aligned outer edges.",
-    "LAYOUT — TRIANGULAR RHYTHM: two artworks on the lower baseline and one raised between and above them, forming a stable triangle of focal points; connect with a shared painted background wash.",
+    "LAYOUT — FIBONACCI FRIEZE: the three artworks in one horizontal band on the lower-third baseline, widths in 8 : 5 : 3 proportion reading left to right, the wide gap 1.618× the narrow gap, all tops aligned to a single golden-section horizontal.",
+    "LAYOUT — GOLDEN HERO AND SATELLITES: the dominant artwork fills the 61.8% major band with its focal point on a rule-of-thirds intersection; the two satellites stack inside the 38.2% minor band at 5 and 3 Fibonacci units, their outer edges flush, the taller one above.",
+    "LAYOUT — PHI SPIRAL TRIAD: place the three artworks on the arcs of a golden spiral across the wall — the largest in the spiral's widest square, the second in the next square, the smallest at the eye of the spiral; focal points form a triangle on rule-of-thirds intersections, joined by one shared painted background wash.",
   ],
 };
+
 
 export const FINAL_SELF_CHECK =
   "FINAL SELF-CHECK before returning the image: is the artwork fully re-executed in real exterior mural medium (aerosol/acrylic at building scale — soft overspray gradients, visible brush/roller texture, thick opaque line work re-drawn at scale, matte finish, NO paper grain/canvas weave/frame/border/white margin/rectangular edge, NO visible boundary where the paint ends), is the paint fully opaque with zero ghosting/transparency and zero artwork pixels off the wall plane, is every artwork fully inside the paintable wall rectangle with clean margins, at correct original aspect ratio, focal point unobstructed, edges following the wall's perspective, real foreground objects still in front, and the paint matte and fully opaque? If not, fix it before rendering.";
@@ -71,23 +85,38 @@ export function buildMuralPrompt(input: BuildPromptInput): string {
 
   const multi =
     n > 1
-      ? `\n\nMULTI-ARTWORK COMBINATION: ${n} separate artwork images are provided (they are the first ${n} images${hasWall ? ", the LAST image is the wall photo" : ""}). Incorporate ALL of them into ONE single cohesive mural on the SAME wall plane, sharing one painted background so they read as one continuous commissioned piece. Each artwork must remain individually recognisable and faithful to its reference (same composition, line work and palette); do not merge them into one hybrid creature, do not drop any of them, do not duplicate one artwork in place of another. Treat the group as a single composition: one shared baseline or deliberate offset grid, consistent relative scale, and even rhythm of negative space between pieces.\n${layout}`
+      ? `\n\nMULTI-ARTWORK COMBINATION: ${n} separate artwork images are provided (they are the first ${n} images${hasWall ? ", the LAST image is the wall photo" : ""}). Incorporate ALL of them into ONE single cohesive mural on the SAME wall plane, sharing one painted background so they read as one continuous commissioned piece. Each artwork must remain individually recognisable and faithful to its reference (same composition, line work and palette); do not merge them into one hybrid creature, do not drop any of them, do not duplicate one artwork in place of another. Treat the group as a single composition: one shared baseline or deliberate offset grid, consistent relative scale, and even rhythm of negative space between pieces.\n\n${GOLDEN_GEOMETRY}\n\n${layout}`
       : "";
+
 
   return `${ANTI_GHOST}\n\n${MEDIUM_TRANSLATION}\n\n${STYLE_LOCK}\n\n${COMPOSITION_RULES}${multi}\n\nSCENE: ${scenePrompt}${extraPrompt ? `\n\n${extraPrompt}` : ""}\n\n${FINAL_SELF_CHECK}`;
 }
 
+/** Extra markers that must appear whenever several artworks share one wall. */
+export const REQUIRED_MULTI_MARKERS: Array<{ id: string; needle: string }> = [
+  { id: "MULTI_COMBINATION", needle: "MULTI-ARTWORK COMBINATION" },
+  { id: "GOLDEN_GEOMETRY", needle: "PROPORTION SYSTEM (golden ratio / Fibonacci / rule of thirds" },
+  { id: "GOLDEN_SECTION", needle: "61.8%" },
+  { id: "FIBONACCI", needle: "8 : 5 : 3" },
+  { id: "RULE_OF_THIRDS", needle: "rule-of-thirds intersection" },
+  { id: "LAYOUT", needle: "LAYOUT —" },
+];
+
 /** Markers missing from a prompt (empty array = healthy). */
-export function findMissingPromptMarkers(prompt: string): string[] {
-  return REQUIRED_PROMPT_MARKERS.filter((m) => !prompt.includes(m.needle)).map((m) => m.id);
+export function findMissingPromptMarkers(prompt: string, artworkCount = 1): string[] {
+  const required =
+    artworkCount > 1
+      ? [...REQUIRED_PROMPT_MARKERS, ...REQUIRED_MULTI_MARKERS]
+      : REQUIRED_PROMPT_MARKERS;
+  return required.filter((m) => !prompt.includes(m.needle)).map((m) => m.id);
 }
 
 /**
  * Runtime guard. Throws (and logs) if the assembled prompt lost a mandatory
  * rule — a broken render is better caught here than shipped to the user.
  */
-export function assertPromptIntegrity(prompt: string, context: string): void {
-  const missing = findMissingPromptMarkers(prompt);
+export function assertPromptIntegrity(prompt: string, context: string, artworkCount = 1): void {
+  const missing = findMissingPromptMarkers(prompt, artworkCount);
   if (missing.length > 0) {
     console.error(
       `[mural:prompt-guard] FAIL ${context} — missing rules: ${missing.join(", ")} (prompt ${prompt.length} chars)`,
@@ -98,6 +127,7 @@ export function assertPromptIntegrity(prompt: string, context: string): void {
     `[mural:prompt-guard] OK ${context} — ${REQUIRED_PROMPT_MARKERS.length} rules present, ${prompt.length} chars`,
   );
 }
+
 
 /**
  * Words that mean the model described the wrong medium/style back to us
