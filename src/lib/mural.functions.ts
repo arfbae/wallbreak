@@ -4,6 +4,9 @@ import {
   buildMuralPrompt,
   checkResponseMedium,
 } from "./mural-prompt";
+import { classifyRenderedMedium } from "./mural-classifier";
+import { hashPrompt, logRender, newCorrelationId } from "./render-log";
+
 
 type Scene = {
   id: "container" | "corner" | "concrete";
