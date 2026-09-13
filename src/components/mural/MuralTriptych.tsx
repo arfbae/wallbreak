@@ -101,7 +101,7 @@ export function MuralTriptych({ murals, isGenerating, selected, onSelect, retryN
             <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-4">
               <div className="flex items-start justify-between">
                 <div className="rounded-md bg-black/50 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-white/80 backdrop-blur-md">
-                  Mockup {String(i + 1).padStart(2, "0")}
+                  {String(i + 1).padStart(2, "0")} / {String(slots.length).padStart(2, "0")}
                 </div>
                 {isSelected && (
                   <div className="rounded-md bg-[var(--studio-accent)] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-black">
@@ -114,8 +114,9 @@ export function MuralTriptych({ murals, isGenerating, selected, onSelect, retryN
                   {m.name}
                 </div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/60">
-                  ANGLE {[35, -25, 10][i]}° · OPACITY 95%
+                  {sceneLabel(m.id)}
                 </div>
+
               </div>
             </div>
 
