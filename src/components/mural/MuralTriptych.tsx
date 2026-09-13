@@ -21,14 +21,26 @@ interface Props {
 }
 
 const PLACEHOLDER_SCENES = [
-  { id: "container", name: "Industrial Container" },
-  { id: "corner", name: "Dual-Plane Brick Corner" },
-  { id: "concrete", name: "Obstructed Concrete Facade" },
+  { id: "container", name: "Mockup 1" },
+  { id: "corner", name: "Mockup 2" },
+  { id: "concrete", name: "Mockup 3" },
 ];
+
+const SCENE_LABELS: Record<string, string> = {
+  container: "Frontal · industrial container",
+  corner: "Angled · dual-plane corner",
+  concrete: "Obstructed · concrete facade",
+};
+
+function sceneLabel(id: string): string {
+  const base = id.split("-")[0] ?? id;
+  return SCENE_LABELS[base] ?? "Wall plane";
+}
 
 export function MuralTriptych({ murals, isGenerating, selected, onSelect, retryNonce, showDebug, count = 3 }: Props) {
   const slots = murals ?? PLACEHOLDER_SCENES.slice(0, count).map((s) => ({ ...s, imageUrl: null }));
   const gridCols = slots.length === 1 ? "md:grid-cols-1" : slots.length === 2 ? "md:grid-cols-2" : "md:grid-cols-3";
+
 
   return (
     <div className={cn("relative grid grid-cols-1 gap-[2px] overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10", gridCols)}>
