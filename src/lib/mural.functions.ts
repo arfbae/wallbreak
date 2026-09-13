@@ -58,10 +58,15 @@ const SCENES: Scene[] = [
 
 type KeyEntry = { key: string; label: string };
 
+type RenderCtx = { cid: string; scene: string; variant: string; artworks: number; promptHash: string };
+
 async function tryOnce(
   key: string,
+  keyLabel: string,
   body: string,
+  ctx: RenderCtx,
 ): Promise<{ ok: true; imageUrl: string } | { ok: false; status: number; msg: string }> {
+  const started = Date.now();
   try {
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -78,25 +83,52 @@ async function tryOnce(
             : res.status === 402
               ? "AI credits exhausted."
               : `Gateway error ${res.status}`;
-      console.error(`[gateway ${res.status}] ${msg}: ${text.slice(0, 200)}`);
+      logRender(
+        { ...ctx, event: "gateway-error", key: keyLabel, status: res.status, detail: `${msg} ${text.slice(0, 160)}`, ms: Date.now() - started },
+        "error",
+      );
       return { ok: false, status: res.status, msg };
     }
     const data = await res.json();
     const imageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url ?? null;
     const responseText: string | null = data?.choices?.[0]?.message?.content ?? null;
-    const medium = checkResponseMedium(typeof responseText === "string" ? responseText : null);
-    if (!medium.ok) {
-      console.warn(
-        `[mural:medium-guard] WRONG MEDIUM/STYLE reported by renderer — offending terms: ${medium.offenders.join(", ")}`,
-      );
-    } else {
-      console.info("[mural:medium-guard] OK — renderer reported no wrong-medium terms");
+    const textCheck = checkResponseMedium(typeof responseText === "string" ? responseText : null);
+    logRender(
+      {
+        ...ctx,
+        event: "medium-guard-text",
+        key: keyLabel,
+        medium: textCheck.ok ? "ok" : "wrong",
+        offenders: textCheck.offenders,
+      },
+      textCheck.ok ? "info" : "warn",
+    );
+    if (!imageUrl) {
+      logRender({ ...ctx, event: "no-image", key: keyLabel, ms: Date.now() - started }, "error");
+      return { ok: false, status: 200, msg: "No image returned" };
     }
-    if (!imageUrl) return { ok: false, status: 200, msg: "No image returned" };
-    console.info("[mural:render] image returned");
-    return { ok: true, imageUrl };
 
+    // Post-render classifier: look at the produced pixels, not just the text.
+    const verdict = await classifyRenderedMedium(imageUrl, key);
+    logRender(
+      {
+        ...ctx,
+        event: "medium-classifier",
+        key: keyLabel,
+        medium: verdict ? (verdict.ok ? "ok" : "wrong") : "unknown",
+        offenders: verdict?.issues ?? [],
+        detail: verdict ? `${verdict.medium} conf=${verdict.confidence}` : "classifier unavailable",
+        ms: Date.now() - started,
+      },
+      verdict && !verdict.ok ? "warn" : "info",
+    );
+    logRender({ ...ctx, event: "render-ok", key: keyLabel, ms: Date.now() - started });
+    return { ok: true, imageUrl };
   } catch (err) {
+    logRender(
+      { ...ctx, event: "render-exception", key: keyLabel, detail: err instanceof Error ? err.message : "Network error", ms: Date.now() - started },
+      "error",
+    );
     return { ok: false, status: 0, msg: err instanceof Error ? err.message : "Network error" };
   }
 }
@@ -130,7 +162,17 @@ async function generateOne(
     extraPrompt,
     layoutIndex,
   });
-  assertPromptIntegrity(prompt, `scene=${scene.id} variant=${variant} artworks=${n}`);
+  assertPromptIntegrity(prompt, `scene=${scene.id} variant=${variant} artworks=${n}`, n);
+
+  const ctx: RenderCtx = {
+    cid: newCorrelationId(),
+    scene: scene.id,
+    variant,
+    artworks: n,
+    promptHash: hashPrompt(prompt),
+  };
+  logRender({ ...ctx, event: "render-start", promptChars: prompt.length });
+
   const content: Array<Record<string, unknown>> = [{ type: "text", text: prompt }];
 
   for (const a of artworkDataUrls) content.push({ type: "image_url", image_url: { url: a } });
@@ -145,7 +187,7 @@ async function generateOne(
 
   let lastMsg = "All keys failed";
   for (const entry of keys) {
-    const result = await tryOnce(entry.key, body);
+    const result = await tryOnce(entry.key, entry.label, body, ctx);
     if (result.ok) {
       return { id: scene.id, name: scene.name, imageUrl: result.imageUrl, keyUsed: entry.label };
     }
@@ -155,8 +197,10 @@ async function generateOne(
       break;
     }
   }
+  logRender({ ...ctx, event: "render-failed", detail: lastMsg }, "error");
   return { id: scene.id, name: scene.name, imageUrl: null, error: lastMsg };
 }
+
 
 
 export const generateMurals = createServerFn({ method: "POST" })
