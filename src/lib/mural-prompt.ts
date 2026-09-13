@@ -92,17 +92,31 @@ export function buildMuralPrompt(input: BuildPromptInput): string {
   return `${ANTI_GHOST}\n\n${MEDIUM_TRANSLATION}\n\n${STYLE_LOCK}\n\n${COMPOSITION_RULES}${multi}\n\nSCENE: ${scenePrompt}${extraPrompt ? `\n\n${extraPrompt}` : ""}\n\n${FINAL_SELF_CHECK}`;
 }
 
+/** Extra markers that must appear whenever several artworks share one wall. */
+export const REQUIRED_MULTI_MARKERS: Array<{ id: string; needle: string }> = [
+  { id: "MULTI_COMBINATION", needle: "MULTI-ARTWORK COMBINATION" },
+  { id: "GOLDEN_GEOMETRY", needle: "PROPORTION SYSTEM (golden ratio / Fibonacci / rule of thirds" },
+  { id: "GOLDEN_SECTION", needle: "61.8%" },
+  { id: "FIBONACCI", needle: "8 : 5 : 3" },
+  { id: "RULE_OF_THIRDS", needle: "rule-of-thirds intersection" },
+  { id: "LAYOUT", needle: "LAYOUT —" },
+];
+
 /** Markers missing from a prompt (empty array = healthy). */
-export function findMissingPromptMarkers(prompt: string): string[] {
-  return REQUIRED_PROMPT_MARKERS.filter((m) => !prompt.includes(m.needle)).map((m) => m.id);
+export function findMissingPromptMarkers(prompt: string, artworkCount = 1): string[] {
+  const required =
+    artworkCount > 1
+      ? [...REQUIRED_PROMPT_MARKERS, ...REQUIRED_MULTI_MARKERS]
+      : REQUIRED_PROMPT_MARKERS;
+  return required.filter((m) => !prompt.includes(m.needle)).map((m) => m.id);
 }
 
 /**
  * Runtime guard. Throws (and logs) if the assembled prompt lost a mandatory
  * rule — a broken render is better caught here than shipped to the user.
  */
-export function assertPromptIntegrity(prompt: string, context: string): void {
-  const missing = findMissingPromptMarkers(prompt);
+export function assertPromptIntegrity(prompt: string, context: string, artworkCount = 1): void {
+  const missing = findMissingPromptMarkers(prompt, artworkCount);
   if (missing.length > 0) {
     console.error(
       `[mural:prompt-guard] FAIL ${context} — missing rules: ${missing.join(", ")} (prompt ${prompt.length} chars)`,
@@ -113,6 +127,7 @@ export function assertPromptIntegrity(prompt: string, context: string): void {
     `[mural:prompt-guard] OK ${context} — ${REQUIRED_PROMPT_MARKERS.length} rules present, ${prompt.length} chars`,
   );
 }
+
 
 /**
  * Words that mean the model described the wrong medium/style back to us
