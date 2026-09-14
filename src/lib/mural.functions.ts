@@ -310,6 +310,34 @@ export const generateMurals = createServerFn({ method: "POST" })
       "COMPOSITION VARIATION 3: keep the same wall, camera, crop and lighting, but re-solve the composition — a clear scale hierarchy (one dominant piece, the others smaller and vertically offset) with asymmetric negative space.",
     ];
 
+    // Pre-render pass: work out what part of every upload is actually the
+    // artwork (photos of canvases, screenshots with UI chrome, artwork inside a
+    // wider scene) so the renderer paints the subject and not its surroundings.
+    const analysisKey = keys[0]?.key;
+    const analyses = analysisKey
+      ? await Promise.all(
+          data.artworks.map(async (a, i) => {
+            const result = await analyzeArtworkSource(a, analysisKey);
+            logRender(
+              {
+                cid: `iso_${i}`,
+                event: "artwork-isolation",
+                detail: result
+                  ? `${result.kind} subject="${result.subject}" bg=${result.removeBackground} conf=${result.confidence}`
+                  : "analyser unavailable",
+              },
+              result ? "info" : "warn",
+            );
+            return result;
+          }),
+        )
+      : [];
+    const isolationRule = buildIsolationRule(analyses);
+
+    const wallLabel = "Client wall · locked plane";
+    const sceneLabelFor = (i: number) =>
+      data.wallDataUrl ? wallLabel : SCENE_LABELS[SCENES[i % SCENES.length].id];
+
     if (data.mode === "combined") {
       const results = await Promise.all(
         Array.from({ length: data.count }, (_, i) => {
@@ -323,7 +351,13 @@ export const generateMurals = createServerFn({ method: "POST" })
             keys,
             VARIATIONS[i],
             i,
-          ).then((r) => ({ ...r, name: data.count > 1 ? `Mockup ${i + 1}` : "Combined Mural" }));
+            isolationRule,
+          ).then((r) => ({
+            ...r,
+            index: i,
+            name: data.count > 1 ? `Mockup ${i + 1}` : "Combined Mural",
+            sceneLabel: sceneLabelFor(i),
+          }));
         }),
       );
       return { murals: await meter(results) };
@@ -341,7 +375,15 @@ export const generateMurals = createServerFn({ method: "POST" })
           data.wallDataUrl,
           data.variant,
           keys,
-        ).then((r) => ({ ...r, name: `Artwork ${i + 1}` }));
+          undefined,
+          0,
+          isolationRule,
+        ).then((r) => ({
+          ...r,
+          index: i,
+          name: `Artwork ${i + 1}`,
+          sceneLabel: sceneLabelFor(i),
+        }));
       }),
     );
     return { murals: await meter(results) };
