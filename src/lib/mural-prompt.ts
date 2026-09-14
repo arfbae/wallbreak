@@ -5,6 +5,9 @@
  * assert the assembled prompt directly.
  */
 
+import { buildIsolationRule } from "./artwork-analysis";
+
+
 export const MEDIUM_TRANSLATION =
   "MEDIUM TRANSLATION (mandatory): the artwork must be RE-EXECUTED in real exterior mural medium — aerosol spray paint and acrylic wall paint applied by hand at building scale — not shown as the original drawing, canvas, print, poster or digital file pasted on the wall. Concretely: soft feathered aerosol gradients and visible overspray haloes on soft transitions, hard hand-cut or taped edges on graphic shapes, slight brush chatter and roller texture in large colour fields, occasional drip or run under heavy areas, thick opaque line work re-drawn at scale (never thin printed hairlines), matte non-reflective finish with zero paper grain, canvas weave, drop shadow, border, frame, white margin or rectangular edge. There must be NO visible boundary between artwork and wall — the paint simply ends where the artist stopped painting. Scale-appropriate detail: micro-details too fine to spray are simplified into painted strokes, while overall composition, subject matter and colour palette stay faithful.";
 
@@ -65,6 +68,7 @@ export const REQUIRED_PROMPT_MARKERS: Array<{ id: string; needle: string }> = [
   { id: "MEDIUM_TRANSLATION_NO_PAPER", needle: "zero paper grain" },
   { id: "ANTI_GHOST", needle: "ANTI-GHOST RULE" },
   { id: "STYLE_LOCK", needle: "CRITICAL ARTWORK FIDELITY" },
+  { id: "ARTWORK_ISOLATION", needle: "ARTWORK ISOLATION" },
   { id: "COMPOSITION_RULES", needle: "COMPOSITION LOGIC" },
   { id: "FINAL_SELF_CHECK", needle: "FINAL SELF-CHECK" },
 ];
@@ -75,19 +79,29 @@ export type BuildPromptInput = {
   hasWall: boolean;
   extraPrompt?: string | undefined;
   layoutIndex?: number;
+  /** Isolation instruction from the pre-render artwork analysis. */
+  isolationRule?: string | undefined;
 };
 
 export function buildMuralPrompt(input: BuildPromptInput): string {
-  const { scenePrompt, artworkCount: n, hasWall, extraPrompt, layoutIndex = 0 } = input;
+  const {
+    scenePrompt,
+    artworkCount: n,
+    hasWall,
+    extraPrompt,
+    layoutIndex = 0,
+    isolationRule,
+  } = input;
   const templates = LAYOUT_TEMPLATES[n];
   const layout = templates ? templates[layoutIndex % templates.length] : "";
+  const isolation = isolationRule?.trim() ? isolationRule.trim() : buildIsolationRule([]);
 
   const multi =
     n > 1
       ? `\n\nMULTI-ARTWORK COMBINATION: ${n} separate artwork images are provided (they are the first ${n} images${hasWall ? ", the LAST image is the wall photo" : ""}). Incorporate ALL of them into ONE single cohesive mural on the SAME wall plane, sharing one painted background so they read as one continuous commissioned piece. Each artwork must remain individually recognisable and faithful to its reference (same composition, line work and palette); do not merge them into one hybrid creature, do not drop any of them, do not duplicate one artwork in place of another. Treat the group as a single composition: one shared baseline or deliberate offset grid, consistent relative scale, and even rhythm of negative space between pieces.\n\n${GOLDEN_GEOMETRY}\n\n${layout}`
       : "";
 
-  return `${ANTI_GHOST}\n\n${MEDIUM_TRANSLATION}\n\n${STYLE_LOCK}\n\n${COMPOSITION_RULES}${multi}\n\nSCENE: ${scenePrompt}${extraPrompt ? `\n\n${extraPrompt}` : ""}\n\n${FINAL_SELF_CHECK}`;
+  return `${ANTI_GHOST}\n\n${MEDIUM_TRANSLATION}\n\n${STYLE_LOCK}\n\n${isolation}\n\n${COMPOSITION_RULES}${multi}\n\nSCENE: ${scenePrompt}${extraPrompt ? `\n\n${extraPrompt}` : ""}\n\n${FINAL_SELF_CHECK}`;
 }
 
 /** Extra markers that must appear whenever several artworks share one wall. */
