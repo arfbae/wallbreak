@@ -5,6 +5,9 @@
  * assert the assembled prompt directly.
  */
 
+import { buildIsolationRule } from "./artwork-analysis";
+
+
 export const MEDIUM_TRANSLATION =
   "MEDIUM TRANSLATION (mandatory): the artwork must be RE-EXECUTED in real exterior mural medium — aerosol spray paint and acrylic wall paint applied by hand at building scale — not shown as the original drawing, canvas, print, poster or digital file pasted on the wall. Concretely: soft feathered aerosol gradients and visible overspray haloes on soft transitions, hard hand-cut or taped edges on graphic shapes, slight brush chatter and roller texture in large colour fields, occasional drip or run under heavy areas, thick opaque line work re-drawn at scale (never thin printed hairlines), matte non-reflective finish with zero paper grain, canvas weave, drop shadow, border, frame, white margin or rectangular edge. There must be NO visible boundary between artwork and wall — the paint simply ends where the artist stopped painting. Scale-appropriate detail: micro-details too fine to spray are simplified into painted strokes, while overall composition, subject matter and colour palette stay faithful.";
 
