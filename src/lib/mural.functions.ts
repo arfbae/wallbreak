@@ -182,6 +182,7 @@ async function generateOne(
     hasWall: Boolean(wallDataUrl),
     extraPrompt,
     layoutIndex,
+    isolationRule,
   });
   assertPromptIntegrity(prompt, `scene=${scene.id} variant=${variant} artworks=${n}`, n);
 
