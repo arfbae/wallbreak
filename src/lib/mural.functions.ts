@@ -155,6 +155,7 @@ async function generateOne(
   keys: KeyEntry[],
   extraPrompt?: string,
   layoutIndex = 0,
+  isolationRule?: string,
 ): Promise<{
   id: Scene["id"];
   name: string;
