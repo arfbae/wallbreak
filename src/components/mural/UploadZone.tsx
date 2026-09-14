@@ -13,7 +13,6 @@ interface Props {
   onModeChange: (mode: "separate" | "combined") => void;
   count: 1 | 2 | 3;
   onCountChange: (count: 1 | 2 | 3) => void;
-
 }
 
 interface DropBoxProps {
@@ -278,4 +277,3 @@ export function UploadZone({
     </div>
   );
 }
-

@@ -52,7 +52,6 @@ export const LAYOUT_TEMPLATES: Record<number, string[]> = {
   ],
 };
 
-
 export const FINAL_SELF_CHECK =
   "FINAL SELF-CHECK before returning the image: is the artwork fully re-executed in real exterior mural medium (aerosol/acrylic at building scale — soft overspray gradients, visible brush/roller texture, thick opaque line work re-drawn at scale, matte finish, NO paper grain/canvas weave/frame/border/white margin/rectangular edge, NO visible boundary where the paint ends), is the paint fully opaque with zero ghosting/transparency and zero artwork pixels off the wall plane, is every artwork fully inside the paintable wall rectangle with clean margins, at correct original aspect ratio, focal point unobstructed, edges following the wall's perspective, real foreground objects still in front, and the paint matte and fully opaque? If not, fix it before rendering.";
 
@@ -87,7 +86,6 @@ export function buildMuralPrompt(input: BuildPromptInput): string {
     n > 1
       ? `\n\nMULTI-ARTWORK COMBINATION: ${n} separate artwork images are provided (they are the first ${n} images${hasWall ? ", the LAST image is the wall photo" : ""}). Incorporate ALL of them into ONE single cohesive mural on the SAME wall plane, sharing one painted background so they read as one continuous commissioned piece. Each artwork must remain individually recognisable and faithful to its reference (same composition, line work and palette); do not merge them into one hybrid creature, do not drop any of them, do not duplicate one artwork in place of another. Treat the group as a single composition: one shared baseline or deliberate offset grid, consistent relative scale, and even rhythm of negative space between pieces.\n\n${GOLDEN_GEOMETRY}\n\n${layout}`
       : "";
-
 
   return `${ANTI_GHOST}\n\n${MEDIUM_TRANSLATION}\n\n${STYLE_LOCK}\n\n${COMPOSITION_RULES}${multi}\n\nSCENE: ${scenePrompt}${extraPrompt ? `\n\n${extraPrompt}` : ""}\n\n${FINAL_SELF_CHECK}`;
 }
@@ -127,7 +125,6 @@ export function assertPromptIntegrity(prompt: string, context: string, artworkCo
     `[mural:prompt-guard] OK ${context} — ${REQUIRED_PROMPT_MARKERS.length} rules present, ${prompt.length} chars`,
   );
 }
-
 
 /**
  * Words that mean the model described the wrong medium/style back to us

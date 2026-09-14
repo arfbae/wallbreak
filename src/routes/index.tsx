@@ -11,7 +11,11 @@ import { ControlDock } from "@/components/mural/ControlDock";
 import { CinematicReveal } from "@/components/mural/CinematicReveal";
 import { ProposalDialog } from "@/components/mural/ProposalDialog";
 
-import { ApiKeyField, loadStoredApiKeyState, type ApiKeyState } from "@/components/mural/ApiKeyField";
+import {
+  ApiKeyField,
+  loadStoredApiKeyState,
+  type ApiKeyState,
+} from "@/components/mural/ApiKeyField";
 import { LibraryPanel } from "@/components/mural/LibraryPanel";
 import { AuthPill } from "@/components/mural/AuthPill";
 import { saveLibraryItem, migrateLocalToCloudIfNeeded } from "@/lib/library";
@@ -38,7 +42,6 @@ export const Route = createFileRoute("/")({
   }),
   component: MuralStudio,
 });
-
 
 function MuralStudio() {
   const generate = useServerFn(generateMurals);
@@ -85,7 +88,6 @@ function MuralStudio() {
     if (value) void saveLibraryItem("artwork", value).catch(() => {});
   };
 
-
   const loadArtworkFromLibrary = (dataUrl: string) => {
     setArtworks((prev) => {
       const next = [...prev];
@@ -118,7 +120,6 @@ function MuralStudio() {
           serverFallback: apiKeyState.serverFallback,
           mode,
           count,
-
         },
       });
     },
@@ -132,7 +133,11 @@ function MuralStudio() {
       } else if (failed.length > 0) {
         toast.warning(`${failed.length} of ${data.murals.length} mockups failed`);
       } else {
-        toast.success(variant === "retry" ? "Recomposed" : `${data.murals.length} mockup${data.murals.length > 1 ? "s" : ""} rendered`);
+        toast.success(
+          variant === "retry"
+            ? "Recomposed"
+            : `${data.murals.length} mockup${data.murals.length > 1 ? "s" : ""} rendered`,
+        );
       }
     },
     onError: (err) => {
@@ -145,10 +150,7 @@ function MuralStudio() {
     [murals, selected],
   );
 
-  const muralIds = useMemo(
-    () => (murals ?? []).map((m) => m.id),
-    [murals],
-  );
+  const muralIds = useMemo(() => (murals ?? []).map((m) => m.id), [murals]);
 
   return (
     <main className="min-h-screen bg-[var(--studio-bg)] text-white">
@@ -201,7 +203,6 @@ function MuralStudio() {
             onModeChange={setMode}
             count={count}
             onCountChange={setCount}
-
           />
         </section>
 
@@ -248,7 +249,6 @@ function MuralStudio() {
             onRetry={() => mutation.mutate("retry")}
             onReveal={() => setRevealOpen(true)}
             onProposal={() => setProposalOpen(true)}
-
             isGenerating={mutation.isPending}
             muralIds={muralIds}
             showDebug={showDebug}
@@ -277,6 +277,5 @@ function MuralStudio() {
         artworkImageUrls={filledArtworks}
       />
     </main>
-
   );
 }

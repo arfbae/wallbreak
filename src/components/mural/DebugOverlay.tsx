@@ -195,17 +195,25 @@ export function DebugOverlay({ sceneId }: { sceneId: string }) {
             color: "white",
           }}
         >
-          <span style={{ background: "rgba(34,197,94,0.85)", color: "black", padding: "0.4px 1px" }}>
+          <span
+            style={{ background: "rgba(34,197,94,0.85)", color: "black", padding: "0.4px 1px" }}
+          >
             WALL PLANE
           </span>
-          <span style={{ background: "rgba(56,189,248,0.9)", color: "black", padding: "0.4px 1px" }}>
+          <span
+            style={{ background: "rgba(56,189,248,0.9)", color: "black", padding: "0.4px 1px" }}
+          >
             MURAL BOUNDS
           </span>
-          <span style={{ background: "rgba(217,70,239,0.85)", color: "black", padding: "0.4px 1px" }}>
+          <span
+            style={{ background: "rgba(217,70,239,0.85)", color: "black", padding: "0.4px 1px" }}
+          >
             VP · VANISH
           </span>
           {data.occluders.length > 0 && (
-            <span style={{ background: "rgba(239,68,68,0.9)", color: "white", padding: "0.4px 1px" }}>
+            <span
+              style={{ background: "rgba(239,68,68,0.9)", color: "white", padding: "0.4px 1px" }}
+            >
               OCCLUDER
             </span>
           )}

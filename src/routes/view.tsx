@@ -103,8 +103,6 @@ function SharedViewer() {
 
   const title = name?.trim() || (kind === "wall" ? "Shared wall photo" : "Shared mockup");
 
-
-
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       {/* Ambient wash */}
@@ -201,7 +199,6 @@ function SharedViewer() {
             </figure>
           )}
         </section>
-
 
         <footer className="border-t border-white/10 pt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white/30">
           Shared from Mural Mockup Studio · Read-only · Link expires automatically

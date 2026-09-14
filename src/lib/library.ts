@@ -121,9 +121,7 @@ async function pushLocalToCloud(userId: string, item: LibraryItem): Promise<Libr
     updated_at: new Date(item.updatedAt).toISOString(),
     deleted_at: item.deletedAt ? new Date(item.deletedAt).toISOString() : null,
   };
-  const { error } = await supabase
-    .from("library_items")
-    .upsert(payload, { onConflict: "id" });
+  const { error } = await supabase.from("library_items").upsert(payload, { onConflict: "id" });
   if (error) throw error;
   return { ...item, remote: true, storagePath: path, dirty: false };
 }
@@ -205,9 +203,7 @@ export async function listLibrary(): Promise<LibraryItem[]> {
     }
   }
   const items = await listLocalAll();
-  return items
-    .filter((i) => !i.deletedAt)
-    .sort((a, b) => b.createdAt - a.createdAt);
+  return items.filter((i) => !i.deletedAt).sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export async function saveLibraryItem(
@@ -345,7 +341,10 @@ export async function createShareLink(
 
 // Wraps a signed file URL in the public, read-only viewer page so recipients
 // get a presentation layout instead of a raw image.
-export function buildViewerUrl(signedUrl: string, item: Pick<LibraryItem, "name" | "kind">): string {
+export function buildViewerUrl(
+  signedUrl: string,
+  item: Pick<LibraryItem, "name" | "kind">,
+): string {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const params = new URLSearchParams({ src: signedUrl });
   if (item.name) params.set("name", item.name);

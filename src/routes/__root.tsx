@@ -73,17 +73,37 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "WallBreak - Mural Mockup Studio" },
-      { name: "description", content: "Generates three distinct mural mockups of uploaded artwork on various surfaces, offering interactive reveals." },
+      {
+        name: "description",
+        content:
+          "Generates three distinct mural mockups of uploaded artwork on various surfaces, offering interactive reveals.",
+      },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "WallBreak - Mural Mockup Studio" },
-      { property: "og:description", content: "Generates three distinct mural mockups of uploaded artwork on various surfaces, offering interactive reveals." },
+      {
+        property: "og:description",
+        content:
+          "Generates three distinct mural mockups of uploaded artwork on various surfaces, offering interactive reveals.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "WallBreak - Mural Mockup Studio" },
-      { name: "twitter:description", content: "Generates three distinct mural mockups of uploaded artwork on various surfaces, offering interactive reveals." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/26810dcf-a060-4ff2-80c6-74241d8381a4" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/26810dcf-a060-4ff2-80c6-74241d8381a4" },
+      {
+        name: "twitter:description",
+        content:
+          "Generates three distinct mural mockups of uploaded artwork on various surfaces, offering interactive reveals.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/26810dcf-a060-4ff2-80c6-74241d8381a4",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/26810dcf-a060-4ff2-80c6-74241d8381a4",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

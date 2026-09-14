@@ -25,12 +25,7 @@ interface Props {
   onLoadWall: (dataUrl: string) => void;
 }
 
-export function LibraryPanel({
-  currentArtworks,
-  currentWall,
-  onLoadArtwork,
-  onLoadWall,
-}: Props) {
+export function LibraryPanel({ currentArtworks, currentWall, onLoadArtwork, onLoadWall }: Props) {
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
