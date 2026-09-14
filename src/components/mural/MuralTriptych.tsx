@@ -37,13 +37,30 @@ function sceneLabel(id: string): string {
   return SCENE_LABELS[base] ?? "Wall plane";
 }
 
-export function MuralTriptych({ murals, isGenerating, selected, onSelect, retryNonce, showDebug, count = 3 }: Props) {
+export function MuralTriptych({
+  murals,
+  isGenerating,
+  selected,
+  onSelect,
+  retryNonce,
+  showDebug,
+  count = 3,
+}: Props) {
   const slots = murals ?? PLACEHOLDER_SCENES.slice(0, count).map((s) => ({ ...s, imageUrl: null }));
-  const gridCols = slots.length === 1 ? "md:grid-cols-1" : slots.length === 2 ? "md:grid-cols-2" : "md:grid-cols-3";
-
+  const gridCols =
+    slots.length === 1
+      ? "md:grid-cols-1"
+      : slots.length === 2
+        ? "md:grid-cols-2"
+        : "md:grid-cols-3";
 
   return (
-    <div className={cn("relative grid grid-cols-1 gap-[2px] overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10", gridCols)}>
+    <div
+      className={cn(
+        "relative grid grid-cols-1 gap-[2px] overflow-hidden rounded-2xl bg-white/10 ring-1 ring-white/10",
+        gridCols,
+      )}
+    >
       {slots.map((m, i) => {
         const isSelected = selected === m.id;
         return (
@@ -116,7 +133,6 @@ export function MuralTriptych({ murals, isGenerating, selected, onSelect, retryN
                 <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/60">
                   {sceneLabel(m.id)}
                 </div>
-
               </div>
             </div>
 

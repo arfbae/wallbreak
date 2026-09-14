@@ -14,7 +14,6 @@ interface Props {
   onToggleDebug: () => void;
 }
 
-
 export function ControlDock({
   hasMurals,
   selected,
@@ -102,7 +101,6 @@ export function ControlDock({
           Proposal PDF
         </button>
         <button
-
           onClick={onReveal}
           disabled={!selected}
           className={cn(

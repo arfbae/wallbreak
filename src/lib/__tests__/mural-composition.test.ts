@@ -68,7 +68,9 @@ describe("post-render medium classifier verdicts", () => {
   });
 
   it("overrides an optimistic ok when the label itself is a wrong medium", () => {
-    const v = parseMediumVerdict('{"ok": true, "medium": "semi-transparent overlay", "issues": []}');
+    const v = parseMediumVerdict(
+      '{"ok": true, "medium": "semi-transparent overlay", "issues": []}',
+    );
     expect(v?.ok).toBe(false);
   });
 

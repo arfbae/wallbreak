@@ -16,7 +16,9 @@ export default defineTool({
       .string()
       .url()
       .optional()
-      .describe("Optional public HTTPS URL of a wall photo to use as the background plate for every mockup."),
+      .describe(
+        "Optional public HTTPS URL of a wall photo to use as the background plate for every mockup.",
+      ),
     variant: z
       .enum(["base", "retry"])
       .default("base")
@@ -37,7 +39,6 @@ export default defineTool({
   },
   annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: true },
   handler: async ({ artworkUrls, wallUrl, variant, mode, count }) => {
-
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) {
       return {
@@ -65,7 +66,6 @@ export default defineTool({
     const result = await generateMurals({
       data: { artworkDataUrls, wallDataUrl, variant, mode, count, apiKey: null },
     });
-
 
     return {
       content: [

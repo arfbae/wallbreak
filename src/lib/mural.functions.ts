@@ -1,12 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import {
-  assertPromptIntegrity,
-  buildMuralPrompt,
-  checkResponseMedium,
-} from "./mural-prompt";
+import { assertPromptIntegrity, buildMuralPrompt, checkResponseMedium } from "./mural-prompt";
 import { classifyRenderedMedium } from "./mural-classifier";
 import { hashPrompt, logRender, newCorrelationId } from "./render-log";
-
 
 type Scene = {
   id: "container" | "corner" | "concrete";
@@ -58,7 +53,13 @@ const SCENES: Scene[] = [
 
 type KeyEntry = { key: string; label: string };
 
-type RenderCtx = { cid: string; scene: string; variant: string; artworks: number; promptHash: string };
+type RenderCtx = {
+  cid: string;
+  scene: string;
+  variant: string;
+  artworks: number;
+  promptHash: string;
+};
 
 async function tryOnce(
   key: string,
@@ -84,7 +85,14 @@ async function tryOnce(
               ? "AI credits exhausted."
               : `Gateway error ${res.status}`;
       logRender(
-        { ...ctx, event: "gateway-error", key: keyLabel, status: res.status, detail: `${msg} ${text.slice(0, 160)}`, ms: Date.now() - started },
+        {
+          ...ctx,
+          event: "gateway-error",
+          key: keyLabel,
+          status: res.status,
+          detail: `${msg} ${text.slice(0, 160)}`,
+          ms: Date.now() - started,
+        },
         "error",
       );
       return { ok: false, status: res.status, msg };
@@ -126,7 +134,13 @@ async function tryOnce(
     return { ok: true, imageUrl };
   } catch (err) {
     logRender(
-      { ...ctx, event: "render-exception", key: keyLabel, detail: err instanceof Error ? err.message : "Network error", ms: Date.now() - started },
+      {
+        ...ctx,
+        event: "render-exception",
+        key: keyLabel,
+        detail: err instanceof Error ? err.message : "Network error",
+        ms: Date.now() - started,
+      },
       "error",
     );
     return { ok: false, status: 0, msg: err instanceof Error ? err.message : "Network error" };
@@ -141,7 +155,13 @@ async function generateOne(
   keys: KeyEntry[],
   extraPrompt?: string,
   layoutIndex = 0,
-): Promise<{ id: Scene["id"]; name: string; imageUrl: string | null; error?: string; keyUsed?: string }> {
+): Promise<{
+  id: Scene["id"];
+  name: string;
+  imageUrl: string | null;
+  error?: string;
+  keyUsed?: string;
+}> {
   if (keys.length === 0) {
     return { id: scene.id, name: scene.name, imageUrl: null, error: "No API key available" };
   }
@@ -184,7 +204,6 @@ async function generateOne(
     modalities: ["image", "text"],
   });
 
-
   let lastMsg = "All keys failed";
   for (const entry of keys) {
     const result = await tryOnce(entry.key, entry.label, body, ctx);
@@ -200,8 +219,6 @@ async function generateOne(
   logRender({ ...ctx, event: "render-failed", detail: lastMsg }, "error");
   return { id: scene.id, name: scene.name, imageUrl: null, error: lastMsg };
 }
-
-
 
 export const generateMurals = createServerFn({ method: "POST" })
   .inputValidator(
@@ -256,9 +273,8 @@ export const generateMurals = createServerFn({ method: "POST" })
     // Server key is a metered resource: signed-in users only, rolling 24h quota.
     let quotaUserId: string | null = null;
     if (data.serverFallback && process.env.LOVABLE_API_KEY) {
-      const { resolveCaller, checkServerKeyQuota, SERVER_KEY_DAILY_LIMIT } = await import(
-        "./gen-guard.server"
-      );
+      const { resolveCaller, checkServerKeyQuota, SERVER_KEY_DAILY_LIMIT } =
+        await import("./gen-guard.server");
       const { userId } = await resolveCaller();
       if (userId) {
         const quota = await checkServerKeyQuota(userId);
@@ -285,7 +301,6 @@ export const generateMurals = createServerFn({ method: "POST" })
       await recordServerKeyUsage(quotaUserId, used);
       return results;
     };
-
 
     const VARIATIONS = [
       "COMPOSITION VARIATION 1: the balanced, canonical arrangement described in the layout instruction above.",
@@ -317,12 +332,15 @@ export const generateMurals = createServerFn({ method: "POST" })
         // When a wall photo is provided, every mockup uses Scene A's strict
         // background-lock prompt (Scene B/C rewrite/obstruct the photo).
         const baseScene = data.wallDataUrl ? SCENES[0] : SCENES[i % SCENES.length];
-        const sceneWithId: Scene = { ...baseScene, id: (`${baseScene.id}-${i}`) as Scene["id"] };
-        return generateOne(sceneWithId, [artworkDataUrl], data.wallDataUrl, data.variant, keys)
-          .then((r) => ({ ...r, name: `Artwork ${i + 1}` }));
+        const sceneWithId: Scene = { ...baseScene, id: `${baseScene.id}-${i}` as Scene["id"] };
+        return generateOne(
+          sceneWithId,
+          [artworkDataUrl],
+          data.wallDataUrl,
+          data.variant,
+          keys,
+        ).then((r) => ({ ...r, name: `Artwork ${i + 1}` }));
       }),
     );
     return { murals: await meter(results) };
-
   });
-

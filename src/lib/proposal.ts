@@ -88,9 +88,18 @@ export async function generateProposalPdf(input: ProposalInput): Promise<Blob> {
 
   const hero = await imageSize(input.muralImageUrl);
   const heroH = Math.min(300, (contentW * hero.h) / hero.w);
-  doc.addImage(input.muralImageUrl, imgFormat(input.muralImageUrl), M, 240, contentW, heroH, undefined, "FAST");
+  doc.addImage(
+    input.muralImageUrl,
+    imgFormat(input.muralImageUrl),
+    M,
+    240,
+    contentW,
+    heroH,
+    undefined,
+    "FAST",
+  );
 
-  let y = 240 + heroH + 34;
+  const y = 240 + heroH + 34;
   const colW = contentW / 2;
   const rows: Array<[string, string]> = [
     ["Client", input.clientName],
@@ -138,7 +147,16 @@ Included: surface cleaning and priming, projection/grid layout, exterior-grade a
     const s = await imageSize(input.wallImageUrl);
     const w = contentW * 0.56;
     const h = Math.min(210, (w * s.h) / s.w);
-    doc.addImage(input.wallImageUrl, imgFormat(input.wallImageUrl), M, ry + 10, w, h, undefined, "FAST");
+    doc.addImage(
+      input.wallImageUrl,
+      imgFormat(input.wallImageUrl),
+      M,
+      ry + 10,
+      w,
+      h,
+      undefined,
+      "FAST",
+    );
     ry += h + 34;
   }
 
@@ -150,7 +168,16 @@ Included: surface cleaning and priming, projection/grid layout, exterior-grade a
     for (let i = 0; i < arts.length; i++) {
       const s = await imageSize(arts[i]!);
       const h = Math.min(150, (w * s.h) / s.w);
-      doc.addImage(arts[i]!, imgFormat(arts[i]!), M + i * (w + gap), ry + 10, w, h, undefined, "FAST");
+      doc.addImage(
+        arts[i]!,
+        imgFormat(arts[i]!),
+        M + i * (w + gap),
+        ry + 10,
+        w,
+        h,
+        undefined,
+        "FAST",
+      );
     }
   }
   drawFooter(doc, 2, title);
