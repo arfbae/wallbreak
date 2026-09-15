@@ -354,7 +354,6 @@ export const generateMurals = createServerFn({ method: "POST" })
             ...r,
             index: i,
             name: data.count > 1 ? `Mockup ${i + 1}` : "Combined Mural",
-            sceneLabel: sceneLabelFor(i),
           }));
         }),
       );
@@ -380,7 +379,6 @@ export const generateMurals = createServerFn({ method: "POST" })
           ...r,
           index: i,
           name: `Artwork ${i + 1}`,
-          sceneLabel: sceneLabelFor(i),
         }));
       }),
     );
