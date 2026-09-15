@@ -337,7 +337,6 @@ export const generateMurals = createServerFn({ method: "POST" })
       : [];
     const isolationRule = buildIsolationRule(analyses, data.keepBackground);
 
-
     if (data.mode === "combined") {
       const results = await Promise.all(
         Array.from({ length: data.count }, (_, i) => {
