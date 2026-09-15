@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { assertPromptIntegrity, buildMuralPrompt, checkResponseMedium } from "./mural-prompt";
 import { classifyRenderedMedium } from "./mural-classifier";
 import { hashPrompt, logRender, newCorrelationId } from "./render-log";
+import { analyzeArtworkSource, buildIsolationRule } from "./artwork-analysis";
 
 type Scene = {
   id: "container" | "corner" | "concrete";
@@ -234,6 +235,7 @@ export const generateMurals = createServerFn({ method: "POST" })
       serverFallback?: boolean;
       mode?: "separate" | "combined";
       count?: number;
+      keepBackground?: boolean;
     }) => {
       const artworkList: string[] = [];
       if (Array.isArray(input.artworkDataUrls)) artworkList.push(...input.artworkDataUrls);
@@ -263,6 +265,7 @@ export const generateMurals = createServerFn({ method: "POST" })
         serverFallback: input.serverFallback !== false,
         mode,
         count,
+        keepBackground: input.keepBackground === true,
       };
     },
   )
@@ -332,11 +335,7 @@ export const generateMurals = createServerFn({ method: "POST" })
           }),
         )
       : [];
-    const isolationRule = buildIsolationRule(analyses);
-
-    const wallLabel = "Client wall · locked plane";
-    const sceneLabelFor = (i: number) =>
-      data.wallDataUrl ? wallLabel : SCENE_LABELS[SCENES[i % SCENES.length].id];
+    const isolationRule = buildIsolationRule(analyses, data.keepBackground);
 
     if (data.mode === "combined") {
       const results = await Promise.all(
@@ -356,7 +355,6 @@ export const generateMurals = createServerFn({ method: "POST" })
             ...r,
             index: i,
             name: data.count > 1 ? `Mockup ${i + 1}` : "Combined Mural",
-            sceneLabel: sceneLabelFor(i),
           }));
         }),
       );
@@ -382,7 +380,6 @@ export const generateMurals = createServerFn({ method: "POST" })
           ...r,
           index: i,
           name: `Artwork ${i + 1}`,
-          sceneLabel: sceneLabelFor(i),
         }));
       }),
     );

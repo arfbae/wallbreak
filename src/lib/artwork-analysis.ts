@@ -147,7 +147,38 @@ const pct = (n: number) => `${Math.round(n * 100)}%`;
  * emits the baseline rule so the renderer is protected even when the analyser
  * was unavailable.
  */
-export function buildIsolationRule(analyses: Array<ArtworkAnalysis | null>): string {
+export function buildIsolationRule(
+  analyses: Array<ArtworkAnalysis | null>,
+  keepBackground = false,
+): string {
+  if (keepBackground) {
+    const keepLines = [
+      "ARTWORK ISOLATION (keep-background mode): treat the supplied artwork image as a COMPLETE composition — its background, " +
+        "washes, fields of colour and atmospheric areas are part of the artwork and MUST be painted along with the main subject. " +
+        "Do not cut the subject out, do not drop the backdrop, do not silhouette anything. Only discard elements that clearly belong to " +
+        "the photograph of the artwork rather than the artwork itself: frames and mounts, table or floor around the sheet, hands or fingers, " +
+        "easel parts, browser or app UI, toolbars, cursors, menu bars, file names, watermarks and platform logos, plus glare, cast shadows and " +
+        "colour casts from room lighting. Correct perspective keystone so the artwork reads square-on, and let the painted composition fill its " +
+        "wall area edge to edge rather than sitting inside a pasted rectangle.",
+    ];
+    analyses.forEach((a, i) => {
+      if (!a) return;
+      const parts: string[] = [`Artwork ${i + 1}: source reads as ${a.kind.replace(/-/g, " ")}`];
+      if (a.subject) parts.push(`main subject = ${a.subject}`);
+      if (a.bbox && (a.bbox.w < 0.98 || a.bbox.h < 0.98)) {
+        parts.push(
+          `the artwork occupies region x ${pct(a.bbox.x)}-${pct(a.bbox.x + a.bbox.w)}, y ${pct(
+            a.bbox.y,
+          )}-${pct(a.bbox.y + a.bbox.h)} of that image — paint that whole region, background included`,
+        );
+      }
+      if (a.discard.length > 0) {
+        parts.push(`still do not paint: ${a.discard.slice(0, 8).join(", ")}`);
+      }
+      keepLines.push(`${parts.join("; ")}.`);
+    });
+    return keepLines.join("\n");
+  }
   const lines = [
     "ARTWORK ISOLATION (apply before any paint is placed): the supplied artwork image may not be a clean artwork file — " +
       "it can be a camera photo of a canvas or sketchbook, a screenshot, or the artwork sitting inside a wider scene. " +
