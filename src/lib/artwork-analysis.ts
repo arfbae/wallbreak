@@ -172,7 +172,9 @@ export function buildIsolationRule(
           )}-${pct(a.bbox.y + a.bbox.h)} of that image — paint that whole region, background included`,
         );
       }
-      lines2Push(parts, a);
+      if (a.discard.length > 0) {
+        parts.push(`still do not paint: ${a.discard.slice(0, 8).join(", ")}`);
+      }
       keepLines.push(`${parts.join("; ")}.`);
     });
     return keepLines.join("\n");
