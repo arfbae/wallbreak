@@ -204,6 +204,8 @@ function MuralStudio() {
             onModeChange={setMode}
             count={count}
             onCountChange={setCount}
+            keepBackground={keepBackground}
+            onKeepBackgroundChange={setKeepBackground}
           />
         </section>
 
