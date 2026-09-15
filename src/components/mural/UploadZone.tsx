@@ -237,6 +237,40 @@ export function UploadZone({
               Separate mode renders one mockup per uploaded artwork.
             </div>
           )}
+
+          <button
+            onClick={() => onKeepBackgroundChange(!keepBackground)}
+            className={cn(
+              "mt-3 flex w-full items-start gap-3 rounded-xl border px-3 py-2 text-left transition-all",
+              keepBackground
+                ? "border-[var(--studio-accent)]/50 bg-[var(--studio-accent)]/15"
+                : "border-white/10 bg-white/[0.02] hover:border-white/25",
+            )}
+          >
+            <span
+              className={cn(
+                "mt-0.5 flex h-4 w-7 shrink-0 items-center rounded-full p-0.5 transition-all",
+                keepBackground ? "bg-[var(--studio-accent)]" : "bg-white/15",
+              )}
+            >
+              <span
+                className={cn(
+                  "h-3 w-3 rounded-full bg-black transition-transform",
+                  keepBackground ? "translate-x-3" : "translate-x-0",
+                )}
+              />
+            </span>
+            <span>
+              <span className="block font-display text-sm leading-tight text-white">
+                Keep artwork background
+              </span>
+              <span className="mt-0.5 block text-[10px] leading-tight text-white/45">
+                {keepBackground
+                  ? "The whole composition is painted — washes and colour fields included."
+                  : "Only the main subject is painted; surroundings are removed."}
+              </span>
+            </span>
+          </button>
         </div>
 
         <button
