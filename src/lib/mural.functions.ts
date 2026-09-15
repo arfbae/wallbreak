@@ -333,11 +333,8 @@ export const generateMurals = createServerFn({ method: "POST" })
           }),
         )
       : [];
-    const isolationRule = buildIsolationRule(analyses);
+    const isolationRule = buildIsolationRule(analyses, data.keepBackground);
 
-    const wallLabel = "Client wall · locked plane";
-    const sceneLabelFor = (i: number) =>
-      data.wallDataUrl ? wallLabel : SCENE_LABELS[SCENES[i % SCENES.length].id];
 
     if (data.mode === "combined") {
       const results = await Promise.all(
