@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { assertPromptIntegrity, buildMuralPrompt, checkResponseMedium } from "./mural-prompt";
 import { classifyRenderedMedium } from "./mural-classifier";
 import { hashPrompt, logRender, newCorrelationId } from "./render-log";
+import { analyzeArtworkSource, buildIsolationRule } from "./artwork-analysis";
 
 type Scene = {
   id: "container" | "corner" | "concrete";
