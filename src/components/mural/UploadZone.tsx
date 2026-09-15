@@ -13,6 +13,8 @@ interface Props {
   onModeChange: (mode: "separate" | "combined") => void;
   count: 1 | 2 | 3;
   onCountChange: (count: 1 | 2 | 3) => void;
+  keepBackground: boolean;
+  onKeepBackgroundChange: (keep: boolean) => void;
 }
 
 interface DropBoxProps {
