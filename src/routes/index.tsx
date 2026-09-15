@@ -56,6 +56,7 @@ function MuralStudio() {
   const [showDebug, setShowDebug] = useState(false);
   const [mode, setMode] = useState<"separate" | "combined">("separate");
   const [count, setCount] = useState<1 | 2 | 3>(1);
+  const [keepBackground, setKeepBackground] = useState(false);
 
   const [apiKeyState, setApiKeyState] = useState<ApiKeyState>({ keys: [], serverFallback: true });
   const { user } = useAuth();
