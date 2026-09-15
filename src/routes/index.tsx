@@ -121,6 +121,7 @@ function MuralStudio() {
           serverFallback: apiKeyState.serverFallback,
           mode,
           count,
+          keepBackground,
         },
       });
     },
