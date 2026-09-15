@@ -265,6 +265,7 @@ export const generateMurals = createServerFn({ method: "POST" })
         serverFallback: input.serverFallback !== false,
         mode,
         count,
+        keepBackground: input.keepBackground === true,
       };
     },
   )
