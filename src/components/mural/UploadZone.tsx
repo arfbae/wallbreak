@@ -149,6 +149,8 @@ export function UploadZone({
   onModeChange,
   count,
   onCountChange,
+  keepBackground,
+  onKeepBackgroundChange,
 }: Props) {
   const filledCount = artworkUrls.filter(Boolean).length;
   const outputs = mode === "combined" ? count : filledCount;
