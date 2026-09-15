@@ -235,6 +235,7 @@ export const generateMurals = createServerFn({ method: "POST" })
       serverFallback?: boolean;
       mode?: "separate" | "combined";
       count?: number;
+      keepBackground?: boolean;
     }) => {
       const artworkList: string[] = [];
       if (Array.isArray(input.artworkDataUrls)) artworkList.push(...input.artworkDataUrls);
