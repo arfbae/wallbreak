@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from "react";
-import { Upload, ImageIcon, X } from "lucide-react";
+import { Upload, ImageIcon, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { prepareImageFile, ImageIntakeError } from "@/lib/image-file";
 
 interface Props {
   artworkUrls: (string | null)[]; // length 3
@@ -40,15 +42,26 @@ function DropBox({
 }: DropBoxProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const handleFile = useCallback(
-    (file: File) => {
-      if (!file.type.startsWith("image/")) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === "string") onFile(reader.result);
-      };
-      reader.readAsDataURL(file);
+    async (file: File) => {
+      setBusy(true);
+      try {
+        const prepared = await prepareImageFile(file);
+        onFile(prepared.dataUrl);
+        if (prepared.resized) {
+          toast.info(`Image resized to ${prepared.width}×${prepared.height} for faster rendering.`);
+        }
+      } catch (err) {
+        toast.error(
+          err instanceof ImageIntakeError
+            ? err.message
+            : "That image could not be loaded. Try a different file.",
+        );
+      } finally {
+        setBusy(false);
+      }
     },
     [onFile],
   );
@@ -64,27 +77,34 @@ function DropBox({
         e.preventDefault();
         setDrag(false);
         const f = e.dataTransfer.files?.[0];
-        if (f) handleFile(f);
+        if (f) void handleFile(f);
       }}
-      onClick={() => inputRef.current?.click()}
+      onClick={() => !busy && inputRef.current?.click()}
       className={cn(
-        "group relative flex flex-1 cursor-pointer items-center gap-3 rounded-2xl border border-dashed px-4 transition-all",
+        "group relative flex flex-1 cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 transition-colors",
         compact ? "h-28" : "h-40 gap-4 px-5",
+        busy && "pointer-events-none opacity-60",
         drag
-          ? "border-[var(--studio-accent)] bg-white/5"
-          : "border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.04]",
+          ? "border-[var(--studio-accent)]/70 bg-white/[0.05]"
+          : "border-white/12 bg-white/[0.015] hover:border-white/25 hover:bg-white/[0.035]",
       )}
     >
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/png,image/jpeg,image/webp"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) handleFile(f);
+          e.target.value = "";
+          if (f) void handleFile(f);
         }}
       />
+      {busy && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-black/40">
+          <Loader2 className="h-4 w-4 animate-spin text-white/70" />
+        </div>
+      )}
       {imageUrl ? (
         <img
           src={imageUrl}
@@ -185,7 +205,7 @@ export function UploadZone({
       </div>
 
       <div className="flex flex-col gap-3 lg:w-[320px]">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.015] p-3">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
             05 · Composition Mode
           </div>
@@ -281,15 +301,15 @@ export function UploadZone({
           onClick={onGenerate}
           disabled={filledCount === 0 || isGenerating}
           className={cn(
-            "relative flex flex-1 items-center justify-center overflow-hidden rounded-2xl border px-8 font-display text-2xl tracking-tight transition-all",
+            "relative flex flex-1 items-center justify-center overflow-hidden rounded-xl border px-8 font-display text-xl tracking-tight transition-colors",
             filledCount === 0 || isGenerating
               ? "cursor-not-allowed border-white/10 bg-white/[0.02] text-white/30"
-              : "cursor-pointer border-[var(--studio-accent)]/40 bg-gradient-to-br from-[var(--studio-accent)]/20 to-[var(--studio-accent-2)]/10 text-white hover:from-[var(--studio-accent)]/30 hover:to-[var(--studio-accent-2)]/20",
+              : "cursor-pointer border-white/15 bg-white/[0.06] text-white hover:border-white/30 hover:bg-white/[0.1]",
           )}
         >
           <div className="flex flex-col items-center gap-2">
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/50">
-              06 · Render Pipeline
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+              Render
             </div>
             <div>
               {isGenerating

@@ -106,7 +106,7 @@ export function ControlDock({
           className={cn(
             "flex h-10 items-center gap-2 rounded-lg px-5 font-mono text-xs uppercase tracking-[0.15em] transition-all",
             selected
-              ? "bg-gradient-to-r from-[var(--studio-accent)] to-[var(--studio-accent-2)] text-black hover:brightness-110"
+              ? "bg-[var(--studio-accent)] text-black hover:brightness-105"
               : "cursor-not-allowed bg-white/[0.04] text-white/20",
           )}
         >

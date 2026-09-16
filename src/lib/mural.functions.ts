@@ -78,13 +78,17 @@ async function tryOnce(
     if (!res.ok) {
       const text = await res.text();
       const msg =
-        res.status === 401 || res.status === 403
-          ? `Auth ${res.status} — invalid/unauthorized key`
-          : res.status === 429
-            ? "Rate limit — please wait a moment."
-            : res.status === 402
-              ? "AI credits exhausted."
-              : `Gateway error ${res.status}`;
+        res.status === 401
+          ? "That API key was rejected. Check the key or use the shared key."
+          : res.status === 403
+            ? "This key isn't allowed to render right now (AI access disabled or a spend limit was reached)."
+            : res.status === 429
+              ? "Too many renders at once. Wait a few seconds and try again."
+              : res.status === 402
+                ? "AI credits are used up. Add credits to keep rendering."
+                : res.status >= 500
+                  ? "The image service is temporarily unavailable. Please try again."
+                  : `Render service error (${res.status}).`;
       logRender(
         {
           ...ctx,
@@ -248,6 +252,22 @@ export const generateMurals = createServerFn({ method: "POST" })
       }
       if (input.wallDataUrl && !input.wallDataUrl.startsWith("data:image/")) {
         throw new Error("wallDataUrl must be a data:image/* URL");
+      }
+      // Payload guard: keep each image (and the whole request) within a size the
+      // gateway can accept, with a message the UI can show verbatim.
+      const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+      const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
+      const bytesOf = (d: string) => Math.floor(((d.length - d.indexOf(",") - 1) * 3) / 4);
+      let total = 0;
+      for (const img of [...artworks, ...(input.wallDataUrl ? [input.wallDataUrl] : [])]) {
+        const size = bytesOf(img);
+        total += size;
+        if (size > MAX_IMAGE_BYTES) {
+          throw new Error("One of your images is too large. Please use an image under 8 MB.");
+        }
+      }
+      if (total > MAX_TOTAL_BYTES) {
+        throw new Error("Your images are too large in total. Remove one or use smaller files.");
       }
       const raw: string[] = [];
       if (Array.isArray(input.apiKeys)) raw.push(...input.apiKeys);
