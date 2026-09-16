@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from "react";
-import { Upload, ImageIcon, X } from "lucide-react";
+import { Upload, ImageIcon, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { prepareImageFile, ImageIntakeError } from "@/lib/image-file";
 
 interface Props {
   artworkUrls: (string | null)[]; // length 3
