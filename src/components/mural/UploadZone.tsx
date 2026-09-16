@@ -81,23 +81,30 @@ function DropBox({
       }}
       onClick={() => !busy && inputRef.current?.click()}
       className={cn(
-        "group relative flex flex-1 cursor-pointer items-center gap-3 rounded-2xl border border-dashed px-4 transition-all",
+        "group relative flex flex-1 cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 transition-colors",
         compact ? "h-28" : "h-40 gap-4 px-5",
+        busy && "pointer-events-none opacity-60",
         drag
-          ? "border-[var(--studio-accent)] bg-white/5"
-          : "border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.04]",
+          ? "border-[var(--studio-accent)]/70 bg-white/[0.05]"
+          : "border-white/12 bg-white/[0.015] hover:border-white/25 hover:bg-white/[0.035]",
       )}
     >
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/png,image/jpeg,image/webp"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) handleFile(f);
+          e.target.value = "";
+          if (f) void handleFile(f);
         }}
       />
+      {busy && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-black/40">
+          <Loader2 className="h-4 w-4 animate-spin text-white/70" />
+        </div>
+      )}
       {imageUrl ? (
         <img
           src={imageUrl}
