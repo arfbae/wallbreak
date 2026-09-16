@@ -1,4 +1,3 @@
-
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
@@ -68,7 +67,7 @@
   /* Studio palette — dark control room */
   --studio-bg: #08080c;
   --studio-panel: #0f0f15;
-  --studio-accent: #d946ef;   /* magenta */
+  --studio-accent: #d946ef; /* magenta */
   --studio-accent-2: #22c55e; /* neon green */
 
   --background: oklch(0.08 0.01 280);
@@ -111,24 +110,30 @@
 }
 
 @layer base {
-
-
   * {
     border-color: var(--color-border);
   }
 
-  html, body {
+  html,
+  body {
     background-color: var(--studio-bg);
     color: var(--color-foreground);
     font-family: var(--font-display);
   }
 
-  .font-display { font-family: var(--font-display); }
-  .font-mono { font-family: var(--font-mono); }
+  .font-display {
+    font-family: var(--font-display);
+  }
+  .font-mono {
+    font-family: var(--font-mono);
+  }
 
   @keyframes slide {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(400%); }
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(400%);
+    }
   }
 }
-
