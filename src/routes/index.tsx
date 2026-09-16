@@ -207,12 +207,12 @@ function MuralStudio() {
         {/* Triptych */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
-              03 · Panoramic Triptych
+            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/35">
+              Mockups
             </div>
             {mutation.isPending && mutation.variables === "retry" && (
-              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--studio-accent)]">
-                Re-analyzing alignment data…
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50">
+                Recomposing…
               </div>
             )}
           </div>
@@ -243,8 +243,8 @@ function MuralStudio() {
           />
         </section>
 
-        <footer className="border-t border-white/10 pt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white/30">
-          Upload any artwork · 3 scenes rendered in parallel · Wall substrate bleeds through paint
+        <footer className="border-t border-white/10 pt-5 text-xs text-white/35">
+          Upload artwork and a wall photo, render mockups, then export a client proposal.
         </footer>
       </div>
 
