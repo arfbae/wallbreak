@@ -158,37 +158,20 @@ function MuralStudio() {
     <main className="min-h-screen bg-[var(--studio-bg)] text-white">
       <Toaster theme="dark" position="top-center" />
 
-      {/* Ambient wash */}
-      <div className="pointer-events-none fixed inset-0 opacity-60">
-        <div
-          className="absolute -top-1/3 -left-1/4 h-[80vh] w-[80vh] rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(217,70,239,0.18), transparent 60%)" }}
-        />
-        <div
-          className="absolute -bottom-1/3 -right-1/4 h-[80vh] w-[80vh] rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(34,197,94,0.14), transparent 60%)" }}
-        />
-      </div>
-
-      <div className="relative mx-auto flex max-w-[1400px] flex-col gap-8 px-6 py-10">
+      <div className="relative mx-auto flex max-w-[1320px] flex-col gap-10 px-5 py-10 md:px-8">
         {/* Header */}
-        <header className="flex items-end justify-between border-b border-white/10 pb-6">
+        <header className="flex flex-col gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/40">
-              Spatial Planning Engine · v1.0
+            <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-white/35">
+              Mural visualisation
             </div>
-            <h1 className="mt-2 font-display text-4xl font-medium tracking-tight md:text-5xl">
-              Mural Mockup <span className="text-[var(--studio-accent)]">Studio</span>
+            <h1 className="mt-2 font-display text-3xl font-medium tracking-tight md:text-4xl">
+              Mural Mockup Studio
             </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <AuthPill />
             <ApiKeyField value={apiKeyState} onChange={setApiKeyState} />
-            <div className="hidden text-right font-mono text-[10px] uppercase leading-relaxed tracking-[0.18em] text-white/40 lg:block">
-              <div>KEY 1200W · FILL 500W · RIM 700W</div>
-              <div>ELEVATION 15° · OPACITY 95%</div>
-              <div>SUBSTRATE MAPPING · ENABLED</div>
-            </div>
           </div>
         </header>
 
