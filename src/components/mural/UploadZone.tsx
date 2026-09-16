@@ -205,7 +205,7 @@ export function UploadZone({
       </div>
 
       <div className="flex flex-col gap-3 lg:w-[320px]">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.015] p-3">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
             05 · Composition Mode
           </div>
@@ -301,15 +301,15 @@ export function UploadZone({
           onClick={onGenerate}
           disabled={filledCount === 0 || isGenerating}
           className={cn(
-            "relative flex flex-1 items-center justify-center overflow-hidden rounded-2xl border px-8 font-display text-2xl tracking-tight transition-all",
+            "relative flex flex-1 items-center justify-center overflow-hidden rounded-xl border px-8 font-display text-xl tracking-tight transition-colors",
             filledCount === 0 || isGenerating
               ? "cursor-not-allowed border-white/10 bg-white/[0.02] text-white/30"
-              : "cursor-pointer border-[var(--studio-accent)]/40 bg-gradient-to-br from-[var(--studio-accent)]/20 to-[var(--studio-accent-2)]/10 text-white hover:from-[var(--studio-accent)]/30 hover:to-[var(--studio-accent-2)]/20",
+              : "cursor-pointer border-white/15 bg-white/[0.06] text-white hover:border-white/30 hover:bg-white/[0.1]",
           )}
         >
           <div className="flex flex-col items-center gap-2">
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/50">
-              06 · Render Pipeline
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+              Render
             </div>
             <div>
               {isGenerating
