@@ -42,15 +42,26 @@ function DropBox({
 }: DropBoxProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const handleFile = useCallback(
-    (file: File) => {
-      if (!file.type.startsWith("image/")) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === "string") onFile(reader.result);
-      };
-      reader.readAsDataURL(file);
+    async (file: File) => {
+      setBusy(true);
+      try {
+        const prepared = await prepareImageFile(file);
+        onFile(prepared.dataUrl);
+        if (prepared.resized) {
+          toast.info(`Image resized to ${prepared.width}×${prepared.height} for faster rendering.`);
+        }
+      } catch (err) {
+        toast.error(
+          err instanceof ImageIntakeError
+            ? err.message
+            : "That image could not be loaded. Try a different file.",
+        );
+      } finally {
+        setBusy(false);
+      }
     },
     [onFile],
   );
@@ -66,9 +77,9 @@ function DropBox({
         e.preventDefault();
         setDrag(false);
         const f = e.dataTransfer.files?.[0];
-        if (f) handleFile(f);
+        if (f) void handleFile(f);
       }}
-      onClick={() => inputRef.current?.click()}
+      onClick={() => !busy && inputRef.current?.click()}
       className={cn(
         "group relative flex flex-1 cursor-pointer items-center gap-3 rounded-2xl border border-dashed px-4 transition-all",
         compact ? "h-28" : "h-40 gap-4 px-5",
