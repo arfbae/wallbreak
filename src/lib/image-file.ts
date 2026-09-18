@@ -73,7 +73,13 @@ export async function prepareImageFile(file: File): Promise<PreparedImage> {
   const needsCompress = estimateBytes(original) > MAX_ENCODED_BYTES;
 
   if (!needsResize && !needsCompress) {
-    return { dataUrl: original, width: w, height: h, bytes: estimateBytes(original), resized: false };
+    return {
+      dataUrl: original,
+      width: w,
+      height: h,
+      bytes: estimateBytes(original),
+      resized: false,
+    };
   }
 
   const targetW = Math.max(1, Math.round(w * scale));
