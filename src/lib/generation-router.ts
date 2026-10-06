@@ -319,7 +319,7 @@ export async function renderImageWithFailover(
             "Content-Type": "application/json",
           },
           body: buildBody(request, resource.model),
-          signal: AbortSignal.timeout(timeoutMs),
+          ...(deps.timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
         });
         if (!res.ok) {
           const text = await res.text().catch(() => "");

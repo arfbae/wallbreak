@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { assertPromptIntegrity, buildMuralPrompt, checkResponseMedium } from "./mural-prompt";
+import { assertPromptIntegrity, buildMuralPrompt } from "./mural-prompt";
+import { buildResourcePlan, renderImageWithFailover } from "./generation-router";
 import { classifyRenderedMedium } from "./mural-classifier";
 import { hashPrompt, logRender, newCorrelationId } from "./render-log";
 import { analyzeArtworkSource, buildIsolationRule } from "./artwork-analysis";
@@ -62,96 +63,6 @@ type RenderCtx = {
   promptHash: string;
 };
 
-async function tryOnce(
-  key: string,
-  keyLabel: string,
-  body: string,
-  ctx: RenderCtx,
-): Promise<{ ok: true; imageUrl: string } | { ok: false; status: number; msg: string }> {
-  const started = Date.now();
-  try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body,
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      const msg =
-        res.status === 401
-          ? "That API key was rejected. Check the key or use the shared key."
-          : res.status === 403
-            ? "This key isn't allowed to render right now (AI access disabled or a spend limit was reached)."
-            : res.status === 429
-              ? "Too many renders at once. Wait a few seconds and try again."
-              : res.status === 402
-                ? "AI credits are used up. Add credits to keep rendering."
-                : res.status >= 500
-                  ? "The image service is temporarily unavailable. Please try again."
-                  : `Render service error (${res.status}).`;
-      logRender(
-        {
-          ...ctx,
-          event: "gateway-error",
-          key: keyLabel,
-          status: res.status,
-          detail: `${msg} ${text.slice(0, 160)}`,
-          ms: Date.now() - started,
-        },
-        "error",
-      );
-      return { ok: false, status: res.status, msg };
-    }
-    const data = await res.json();
-    const imageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url ?? null;
-    const responseText: string | null = data?.choices?.[0]?.message?.content ?? null;
-    const textCheck = checkResponseMedium(typeof responseText === "string" ? responseText : null);
-    logRender(
-      {
-        ...ctx,
-        event: "medium-guard-text",
-        key: keyLabel,
-        medium: textCheck.ok ? "ok" : "wrong",
-        offenders: textCheck.offenders,
-      },
-      textCheck.ok ? "info" : "warn",
-    );
-    if (!imageUrl) {
-      logRender({ ...ctx, event: "no-image", key: keyLabel, ms: Date.now() - started }, "error");
-      return { ok: false, status: 200, msg: "No image returned" };
-    }
-
-    // Post-render classifier: look at the produced pixels, not just the text.
-    const verdict = await classifyRenderedMedium(imageUrl, key);
-    logRender(
-      {
-        ...ctx,
-        event: "medium-classifier",
-        key: keyLabel,
-        medium: verdict ? (verdict.ok ? "ok" : "wrong") : "unknown",
-        offenders: verdict?.issues ?? [],
-        detail: verdict ? `${verdict.medium} conf=${verdict.confidence}` : "classifier unavailable",
-        ms: Date.now() - started,
-      },
-      verdict && !verdict.ok ? "warn" : "info",
-    );
-    logRender({ ...ctx, event: "render-ok", key: keyLabel, ms: Date.now() - started });
-    return { ok: true, imageUrl };
-  } catch (err) {
-    logRender(
-      {
-        ...ctx,
-        event: "render-exception",
-        key: keyLabel,
-        detail: err instanceof Error ? err.message : "Network error",
-        ms: Date.now() - started,
-      },
-      "error",
-    );
-    return { ok: false, status: 0, msg: err instanceof Error ? err.message : "Network error" };
-  }
-}
-
 async function generateOne(
   scene: Scene,
   artworkDataUrls: string[],
@@ -200,31 +111,62 @@ async function generateOne(
   };
   logRender({ ...ctx, event: "render-start", promptChars: prompt.length });
 
-  const content: Array<Record<string, unknown>> = [{ type: "text", text: prompt }];
+  // The complete mural request (prompt + artwork + wall) goes to the central
+  // router, which owns model/credential selection, cooldowns and failover.
+  const outcome = await renderImageWithFailover(
+    { prompt, artworkDataUrls, wallDataUrl },
+    buildResourcePlan(keys),
+    {
+      onAttempt: (a) =>
+        logRender(
+          {
+            ...ctx,
+            event: a.ok ? "router-attempt-ok" : "router-attempt-failed",
+            key: a.credential,
+            detail: `${a.model} try=${a.attempt}${a.failure ? ` failure=${a.failure}` : ""}`,
+            ms: a.ms,
+          },
+          a.ok ? "info" : "warn",
+        ),
+    },
+  );
 
-  for (const a of artworkDataUrls) content.push({ type: "image_url", image_url: { url: a } });
-  if (wallDataUrl) content.push({ type: "image_url", image_url: { url: wallDataUrl } });
-
-  const body = JSON.stringify({
-    model: "google/gemini-2.5-flash-image",
-    messages: [{ role: "user", content }],
-    modalities: ["image", "text"],
-  });
-
-  let lastMsg = "All keys failed";
-  for (const entry of keys) {
-    const result = await tryOnce(entry.key, entry.label, body, ctx);
-    if (result.ok) {
-      return { id: scene.id, name: scene.name, imageUrl: result.imageUrl, keyUsed: entry.label };
-    }
-    lastMsg = `${entry.label}: ${result.msg}`;
-    // Only fall through to next key on auth failures. Rate limit / credits / other → stop.
-    if (result.status !== 401 && result.status !== 403 && result.status !== 0) {
-      break;
-    }
+  if (!outcome.ok) {
+    logRender(
+      {
+        ...ctx,
+        event: "render-failed",
+        detail: `${outcome.failure} attempts=${outcome.attempts.length}`,
+      },
+      "error",
+    );
+    return { id: scene.id, name: scene.name, imageUrl: null, error: outcome.message };
   }
-  logRender({ ...ctx, event: "render-failed", detail: lastMsg }, "error");
-  return { id: scene.id, name: scene.name, imageUrl: null, error: lastMsg };
+
+  const verdict = await classifyRenderedMedium(outcome.imageUrl, outcome.resource.credential.key);
+  logRender(
+    {
+      ...ctx,
+      event: "medium-classifier",
+      key: outcome.resource.credential.label,
+      medium: verdict ? (verdict.ok ? "ok" : "wrong") : "unknown",
+      offenders: verdict?.issues ?? [],
+      detail: verdict ? `${verdict.medium} conf=${verdict.confidence}` : "classifier unavailable",
+    },
+    verdict && !verdict.ok ? "warn" : "info",
+  );
+  logRender({
+    ...ctx,
+    event: "render-ok",
+    key: outcome.resource.credential.label,
+    detail: outcome.resource.model,
+  });
+  return {
+    id: scene.id,
+    name: scene.name,
+    imageUrl: outcome.imageUrl,
+    keyUsed: outcome.resource.credential.label,
+  };
 }
 
 export const generateMurals = createServerFn({ method: "POST" })
