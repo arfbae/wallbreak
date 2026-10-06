@@ -47,7 +47,8 @@ describe("generation router", () => {
 
   it("cools down a rate-limited resource and moves on", async () => {
     let n = 0;
-    const fetchImpl = (async () => (++n === 1 ? new Response("", { status: 429 }) : ok())) as typeof fetch;
+    const fetchImpl = (async () =>
+      ++n === 1 ? new Response("", { status: 429 }) : ok()) as typeof fetch;
     const plan = buildResourcePlan(creds);
     const out = await renderImageWithFailover(req, plan, { fetchImpl, sleep: noSleep });
     expect(out.ok).toBe(true);

@@ -133,7 +133,11 @@ async function generateOne(
 
   if (!outcome.ok) {
     logRender(
-      { ...ctx, event: "render-failed", detail: `${outcome.failure} attempts=${outcome.attempts.length}` },
+      {
+        ...ctx,
+        event: "render-failed",
+        detail: `${outcome.failure} attempts=${outcome.attempts.length}`,
+      },
       "error",
     );
     return { id: scene.id, name: scene.name, imageUrl: null, error: outcome.message };
