@@ -209,7 +209,45 @@ export function ProposalDialog({
             placeholder="Surface prep, access equipment, anti-graffiti coating…"
             className="resize-none border-white/10 bg-white/[0.03] text-sm text-white placeholder:text-white/25"
           />
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleWrite}
+              disabled={writing}
+              className="flex h-8 items-center gap-1.5 rounded-md border border-white/10 px-3 font-mono text-[10px] uppercase tracking-[0.15em] text-white/70 hover:bg-white/5 disabled:opacity-40"
+            >
+              {writing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              {writing ? "Writing…" : "Write with AI"}
+            </button>
+            <button
+              type="button"
+              onClick={handlePaint}
+              disabled={painting}
+              className="flex h-8 items-center gap-1.5 rounded-md border border-white/10 px-3 font-mono text-[10px] uppercase tracking-[0.15em] text-white/70 hover:bg-white/5 disabled:opacity-40"
+            >
+              {painting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Palette className="h-3 w-3" />}
+              {painting ? "Analysing…" : "Palette & paint list"}
+            </button>
+          </div>
         </div>
+
+        {plan && (
+          <div className="space-y-2 rounded-lg border border-white/10 p-3">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+              Paint list · {plan.areaSqm.toFixed(0)} m² · ~{plan.totalLitres} L · added to PDF
+            </div>
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              {plan.colours.map((c) => (
+                <div key={c.hex + c.name} className="flex items-center gap-2 text-xs text-white/75">
+                  <span className="h-4 w-4 shrink-0 rounded-sm border border-white/15" style={{ background: c.hex }} />
+                  <span className="truncate">{c.name}</span>
+                  <span className="ml-auto font-mono text-white/40">{c.coveragePct}% · {c.litres} L</span>
+                </div>
+              ))}
+            </div>
+            {plan.notes && <p className="text-xs text-white/45">{plan.notes}</p>}
+          </div>
+        )}
 
         <DialogFooter>
           <button
