@@ -94,7 +94,10 @@ export function parseWallGeometry(text: string | null | undefined): WallGeometry
   };
 }
 
-const lerp = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+const lerp = (a: Pt, b: Pt, t: number): Pt => ({
+  x: a.x + (b.x - a.x) * t,
+  y: a.y + (b.y - a.y) * t,
+});
 
 /** Bilinear map from wall-local (u,v ∈ 0..1) to image coords. */
 export function mapUV(q: Quad, u: number, v: number): Pt {
@@ -105,11 +108,7 @@ export function mapUV(q: Quad, u: number, v: number): Pt {
  * Solve the mural's target quad inside the paintable quad: 10% margins,
  * ~65% of the area, artwork aspect preserved, focal band slightly above centre.
  */
-export function solveMuralQuad(
-  wall: Quad,
-  artAspect = 1,
-  imageAspect = 4 / 3,
-): Quad {
+export function solveMuralQuad(wall: Quad, artAspect = 1, imageAspect = 4 / 3): Quad {
   const wallW = ((wall.tr.x - wall.tl.x + (wall.br.x - wall.bl.x)) / 2) * imageAspect;
   const wallH = (wall.bl.y - wall.tl.y + (wall.br.y - wall.tr.y)) / 2;
   const wallAspect = wallW / wallH;
@@ -135,7 +134,11 @@ const f = (p: Pt) => `(${Math.round(p.x * 100)}%, ${Math.round(p.y * 100)}%)`;
 
 export const PROJECTION_MARKER = "PROJECTION TARGET";
 
-export function buildProjectionRule(g: WallGeometry | null, artAspect = 1, imageAspect = 4 / 3): string {
+export function buildProjectionRule(
+  g: WallGeometry | null,
+  artAspect = 1,
+  imageAspect = 4 / 3,
+): string {
   if (!g) {
     return `${PROJECTION_MARKER} (no measurement available): identify the single largest clean wall plane in the photo and keep 100% of the paint inside it. Never paint on sky, ground, vehicles, windows or neighbouring structures; if unsure, paint smaller and more central on the wall.`;
   }
@@ -181,7 +184,11 @@ async function vision(prompt: string, imageUrl: string, key: string, fetchImpl =
   }
 }
 
-export async function analyzeWallGeometry(wallDataUrl: string, key: string, fetchImpl?: typeof fetch) {
+export async function analyzeWallGeometry(
+  wallDataUrl: string,
+  key: string,
+  fetchImpl?: typeof fetch,
+) {
   return parseWallGeometry(await vision(WALL_PROMPT, wallDataUrl, key, fetchImpl));
 }
 
@@ -192,7 +199,9 @@ export function parsePlacementVerdict(text: string | null | undefined): Placemen
   if (!m) return null;
   try {
     const o = JSON.parse(m[0]) as Record<string, unknown>;
-    const issues = Array.isArray(o.issues) ? o.issues.filter((i): i is string => typeof i === "string") : [];
+    const issues = Array.isArray(o.issues)
+      ? o.issues.filter((i): i is string => typeof i === "string")
+      : [];
     return { ok: o.onWall === true && issues.length === 0, issues };
   } catch {
     return null;

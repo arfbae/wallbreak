@@ -4,6 +4,13 @@ import { buildResourcePlan, renderImageWithFailover } from "./generation-router"
 import { classifyRenderedMedium } from "./mural-classifier";
 import { hashPrompt, logRender, newCorrelationId } from "./render-log";
 import { analyzeArtworkSource, buildIsolationRule } from "./artwork-analysis";
+import {
+  analyzeWallGeometry,
+  buildProjectionRule,
+  dataUrlAspect,
+  verifyPlacement,
+  type WallGeometry,
+} from "./wall-geometry";
 
 type Scene = {
   id: "container" | "corner" | "concrete";
@@ -72,6 +79,8 @@ async function generateOne(
   extraPrompt?: string,
   layoutIndex = 0,
   isolationRule?: string,
+  projection?: { rule: string; geometry: WallGeometry | null },
+  attempt = 0,
 ): Promise<{
   id: Scene["id"];
   name: string;
@@ -96,7 +105,7 @@ async function generateOne(
     scenePrompt,
     artworkCount: n,
     hasWall: Boolean(wallDataUrl),
-    extraPrompt,
+    extraPrompt: [extraPrompt, projection?.rule].filter(Boolean).join("\n\n") || undefined,
     layoutIndex,
     isolationRule,
   });
@@ -155,6 +164,40 @@ async function generateOne(
     },
     verdict && !verdict.ok ? "warn" : "info",
   );
+  // Projection check: a render with paint off the wall plane is re-rendered
+  // once with the measured bounds and the reported faults spelled out.
+  if (wallDataUrl && projection) {
+    const placement = await verifyPlacement(
+      outcome.imageUrl,
+      projection.geometry,
+      outcome.resource.credential.key,
+    );
+    logRender(
+      {
+        ...ctx,
+        event: "placement-check",
+        detail: placement
+          ? `${placement.ok ? "on-wall" : "OFF-WALL"} ${placement.issues.join("; ")}`
+          : "verifier unavailable",
+      },
+      placement && !placement.ok ? "warn" : "info",
+    );
+    if (placement && !placement.ok && attempt === 0) {
+      const fix = `PLACEMENT CORRECTION (previous attempt was rejected): ${placement.issues.join("; ") || "paint left the wall plane"}. Keep every painted pixel strictly inside the measured wall bounds.`;
+      return generateOne(
+        scene,
+        artworkDataUrls,
+        wallDataUrl,
+        variant,
+        keys,
+        [extraPrompt, fix].filter(Boolean).join("\n\n"),
+        layoutIndex,
+        isolationRule,
+        projection,
+        1,
+      );
+    }
+  }
   logRender({
     ...ctx,
     event: "render-ok",
@@ -299,6 +342,35 @@ export const generateMurals = createServerFn({ method: "POST" })
       : [];
     const isolationRule = buildIsolationRule(analyses, data.keepBackground);
 
+    // Projection mapping: measure the wall's paintable quad once, then give
+    // every render explicit target coordinates instead of "paint on the wall".
+    let geometry: WallGeometry | null = null;
+    if (data.wallDataUrl && analysisKey) {
+      geometry = await analyzeWallGeometry(data.wallDataUrl, analysisKey);
+      logRender(
+        {
+          cid: "wall",
+          event: "wall-geometry",
+          detail: geometry
+            ? `${geometry.surface} conf=${geometry.confidence} occluders=${geometry.occluders.length}`
+            : "unavailable",
+        },
+        geometry ? "info" : "warn",
+      );
+    }
+    const wallAspect = data.wallDataUrl ? (dataUrlAspect(data.wallDataUrl) ?? 4 / 3) : 4 / 3;
+    const projectionFor = (arts: string[]) =>
+      data.wallDataUrl
+        ? {
+            geometry,
+            rule: buildProjectionRule(
+              geometry,
+              arts.length === 1 ? (dataUrlAspect(arts[0]!) ?? 1) : 1.618,
+              wallAspect,
+            ),
+          }
+        : undefined;
+
     if (data.mode === "combined") {
       const results = await Promise.all(
         Array.from({ length: data.count }, (_, i) => {
@@ -313,6 +385,7 @@ export const generateMurals = createServerFn({ method: "POST" })
             VARIATIONS[i],
             i,
             isolationRule,
+            projectionFor(data.artworks),
           ).then((r) => ({
             ...r,
             index: i,
@@ -338,6 +411,7 @@ export const generateMurals = createServerFn({ method: "POST" })
           undefined,
           0,
           isolationRule,
+          projectionFor([artworkDataUrl]),
         ).then((r) => ({
           ...r,
           index: i,
