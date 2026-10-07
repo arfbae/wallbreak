@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { FileText, Loader2 } from "lucide-react";
+import { FileText, Loader2, Palette, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { writeProposalCopy, buildPaintPlan, type PaintPlan } from "@/lib/ai-features.functions";
 
 import {
   Dialog,
@@ -74,8 +76,61 @@ export function ProposalDialog({
   });
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+  const [writing, setWriting] = useState(false);
+  const [painting, setPainting] = useState(false);
+  const [plan, setPlan] = useState<PaintPlan | null>(null);
+  const writeCopy = useServerFn(writeProposalCopy);
+  const paintPlan = useServerFn(buildPaintPlan);
 
   const set = (key: FieldKey, v: string) => setForm((p) => ({ ...p, [key]: v }));
+
+  const areaFromDims = () => {
+    const nums = form.wallDimensions.match(/\d+(\.\d+)?/g)?.map(Number) ?? [];
+    return nums.length >= 2 && nums[0] * nums[1] > 0 ? nums[0] * nums[1] : 50;
+  };
+
+  const handleWrite = async () => {
+    setWriting(true);
+    try {
+      const { text } = await writeCopy({
+        data: {
+          muralImageUrl,
+          sceneName: sceneName ?? "",
+          clientName: form.clientName,
+          projectTitle: form.projectTitle,
+          location: form.location,
+          wallDimensions: form.wallDimensions,
+          timeline: form.timeline,
+          brief: notes.slice(0, 2000),
+        },
+      });
+      setNotes(text);
+      toast.success("Scope written");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not write copy");
+    } finally {
+      setWriting(false);
+    }
+  };
+
+  const handlePaint = async () => {
+    const urls = [...artworkImageUrls.slice(0, 3), ...(muralImageUrl ? [muralImageUrl] : [])];
+    if (!urls.length) return toast.error("Add artwork first");
+    setPainting(true);
+    try {
+      setPlan(await paintPlan({ data: { imageUrls: urls.slice(0, 4), areaSqm: areaFromDims() } }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not build the paint list");
+    } finally {
+      setPainting(false);
+    }
+  };
+
+  const paintText = plan
+    ? `\n\nPaint list (${plan.areaSqm.toFixed(0)} m², 2 coats, ~${plan.totalLitres} L total):\n` +
+      plan.colours.map((c) => `- ${c.name} ${c.hex} — ${c.coveragePct}% · ${c.litres} L`).join("\n") +
+      (plan.notes ? `\n${plan.notes}` : "")
+    : "";
 
   const handleGenerate = async () => {
     if (!muralImageUrl) {
