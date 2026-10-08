@@ -128,7 +128,9 @@ export function ProposalDialog({
 
   const paintText = plan
     ? `\n\nPaint list (${plan.areaSqm.toFixed(0)} m², 2 coats, ~${plan.totalLitres} L total):\n` +
-      plan.colours.map((c) => `- ${c.name} ${c.hex} — ${c.coveragePct}% · ${c.litres} L`).join("\n") +
+      plan.colours
+        .map((c) => `- ${c.name} ${c.hex} — ${c.coveragePct}% · ${c.litres} L`)
+        .join("\n") +
       (plan.notes ? `\n${plan.notes}` : "")
     : "";
 
@@ -216,7 +218,11 @@ export function ProposalDialog({
               disabled={writing}
               className="flex h-8 items-center gap-1.5 rounded-md border border-white/10 px-3 font-mono text-[10px] uppercase tracking-[0.15em] text-white/70 hover:bg-white/5 disabled:opacity-40"
             >
-              {writing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              {writing ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Sparkles className="h-3 w-3" />
+              )}
               {writing ? "Writing…" : "Write with AI"}
             </button>
             <button
@@ -225,7 +231,11 @@ export function ProposalDialog({
               disabled={painting}
               className="flex h-8 items-center gap-1.5 rounded-md border border-white/10 px-3 font-mono text-[10px] uppercase tracking-[0.15em] text-white/70 hover:bg-white/5 disabled:opacity-40"
             >
-              {painting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Palette className="h-3 w-3" />}
+              {painting ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Palette className="h-3 w-3" />
+              )}
               {painting ? "Analysing…" : "Palette & paint list"}
             </button>
           </div>
@@ -239,9 +249,14 @@ export function ProposalDialog({
             <div className="grid gap-1.5 sm:grid-cols-2">
               {plan.colours.map((c) => (
                 <div key={c.hex + c.name} className="flex items-center gap-2 text-xs text-white/75">
-                  <span className="h-4 w-4 shrink-0 rounded-sm border border-white/15" style={{ background: c.hex }} />
+                  <span
+                    className="h-4 w-4 shrink-0 rounded-sm border border-white/15"
+                    style={{ background: c.hex }}
+                  />
                   <span className="truncate">{c.name}</span>
-                  <span className="ml-auto font-mono text-white/40">{c.coveragePct}% · {c.litres} L</span>
+                  <span className="ml-auto font-mono text-white/40">
+                    {c.coveragePct}% · {c.litres} L
+                  </span>
                 </div>
               ))}
             </div>
