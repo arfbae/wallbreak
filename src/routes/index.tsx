@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { toast, Toaster } from "sonner";
 
 import { generateMurals } from "@/lib/mural.functions";
+import { CompositionPlanner } from "@/components/mural/CompositionPlanner";
+import type { CompositionPlan } from "@/lib/ai-features.functions";
 import { UploadZone } from "@/components/mural/UploadZone";
 import { MuralTriptych, type Mural } from "@/components/mural/MuralTriptych";
 import { ControlDock } from "@/components/mural/ControlDock";
@@ -57,6 +59,8 @@ function MuralStudio() {
   const [mode, setMode] = useState<"separate" | "combined">("separate");
   const [count, setCount] = useState<1 | 2 | 3>(1);
   const [keepBackground, setKeepBackground] = useState(false);
+  const [plan, setPlan] = useState<CompositionPlan | null>(null);
+  const [usePlan, setUsePlan] = useState(true);
 
   const [apiKeyState, setApiKeyState] = useState<ApiKeyState>({ keys: [], serverFallback: true });
   const { user } = useAuth();
@@ -79,6 +83,7 @@ function MuralStudio() {
   }, [user]);
 
   const setArtworkAt = (index: number, value: string | null) => {
+    setPlan(null);
     setArtworks((prev) => {
       const next = [...prev];
       next[index] = value;
@@ -122,6 +127,7 @@ function MuralStudio() {
           mode,
           count,
           keepBackground,
+          compositionPlan: mode === "combined" && usePlan && plan ? plan.directive : null,
         },
       });
     },
@@ -191,6 +197,17 @@ function MuralStudio() {
             keepBackground={keepBackground}
             onKeepBackgroundChange={setKeepBackground}
           />
+          {mode === "combined" && filledArtworks.length >= 2 && (
+            <CompositionPlanner
+              artworks={filledArtworks}
+              wall={wall}
+              keepBackground={keepBackground}
+              plan={plan}
+              onPlan={setPlan}
+              usePlan={usePlan}
+              onUsePlanChange={setUsePlan}
+            />
+          )}
         </section>
 
         {/* Library */}
