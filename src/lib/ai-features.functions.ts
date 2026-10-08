@@ -213,3 +213,137 @@ export const buildPaintPlan = createServerFn({ method: "POST" })
       notes: raw.notes.trim().slice(0, 400),
     };
   });
+
+// ---------------------------------------------------------------------------
+// Gemini — combined-mural composition planner
+// ---------------------------------------------------------------------------
+
+export type CompositionPlan = {
+  heroIndex: number;
+  order: number[];
+  scales: number[];
+  arrangement: string;
+  bridges: string;
+  palette: string[];
+  rationale: string;
+  directive: string;
+};
+
+export const planComposition = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      artworkUrls: z.array(z.string().max(MAX_IMAGE_CHARS)).min(2).max(3),
+      wallUrl: imageField,
+      keepBackground: z.boolean(),
+    }),
+  )
+  .handler(async ({ data }): Promise<CompositionPlan> => {
+    const key = await requireUser();
+    const { streamText, Output, NoObjectGeneratedError } = await import("ai");
+    const { createOpenAICompatible } = await import("@ai-sdk/openai-compatible");
+    const { createLovableAiGatewayRunIdFetch } = await import("./ai/run-id");
+
+    const runIdFetch = createLovableAiGatewayRunIdFetch();
+    const gateway = createOpenAICompatible({
+      name: "lovable",
+      baseURL: GATEWAY,
+      supportsStructuredOutputs: true,
+      headers: { "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
+      fetch: runIdFetch.fetch,
+    });
+
+    const n = data.artworkUrls.length;
+    const schema = z.object({
+      heroArtwork: z.number(),
+      leftToRightOrder: z.array(z.number()),
+      relativeScalePct: z.array(z.number()),
+      arrangement: z.string(),
+      bridges: z.string(),
+      palette: z.array(z.string()),
+      rationale: z.string(),
+    });
+
+    const content: Array<{ type: "text"; text: string } | { type: "image"; image: string }> = [];
+    data.artworkUrls.forEach((url, i) => {
+      content.push({ type: "text", text: `ARTWORK ${i + 1}:` });
+      content.push({ type: "image", image: url });
+    });
+    if (data.wallUrl) {
+      content.push({ type: "text", text: "WALL PHOTO (target surface):" });
+      content.push({ type: "image", image: data.wallUrl });
+    }
+    content.push({
+      type: "text",
+      text: `You are a lead muralist planning ONE unified mural that combines these ${n} artworks${data.wallUrl ? " on the wall shown" : ""}. ${data.keepBackground ? "Each artwork's background is part of the piece." : "Only each artwork's main subject will be painted."}
+Decide: heroArtwork (1-based number of the strongest focal piece); leftToRightOrder (1-based artwork numbers, every artwork exactly once); relativeScalePct (size of each artwork in that left-to-right order, hero = 100, others 30-80, follow Fibonacci-like 8:5:3 hierarchy); arrangement (one sentence: where each piece sits on the wall, using golden-section / rule-of-thirds positions${data.wallUrl ? " and avoiding windows, doors, pipes and occluders you can see" : ""}); bridges (one or two sentences: shared background wash, connecting motifs, overlaps or colour transitions that make the pieces read as one mural instead of separate stickers); palette (4-6 #RRGGBB unifying colours drawn from the artworks); rationale (two short plain-English sentences for the artist explaining why this works). Never invent new subjects.`,
+    });
+
+    let raw: z.infer<typeof schema>;
+    try {
+      const result = streamText({
+        model: gateway("google/gemini-3.8-flash"),
+        maxRetries: 0,
+        output: Output.object({ schema }),
+        messages: [{ role: "user", content }],
+      });
+      raw = await result.output;
+    } catch (err) {
+      if (NoObjectGeneratedError.isInstance(err) && err.text) {
+        try {
+          raw = schema.parse(JSON.parse(err.text));
+        } catch {
+          throw new Error("Could not read the composition plan. Please try again.");
+        }
+      } else {
+        console.error("[ai:composition-plan]", err);
+        throw new Error(friendlyError(err));
+      }
+    }
+
+    // Normalise to 0-based, every artwork exactly once.
+    const valid = (v: number) => Number.isInteger(v) && v >= 1 && v <= n;
+    const seen = new Set<number>();
+    const order = raw.leftToRightOrder
+      .filter((v) => valid(v) && !seen.has(v) && seen.add(v))
+      .map((v) => v - 1);
+    for (let i = 0; i < n; i++) if (!order.includes(i)) order.push(i);
+    const heroIndex = valid(raw.heroArtwork) ? raw.heroArtwork - 1 : order[0]!;
+    const scales = order.map((idx, i) =>
+      idx === heroIndex
+        ? 100
+        : Math.round(Math.min(90, Math.max(25, raw.relativeScalePct[i] ?? 60))),
+    );
+    const palette = raw.palette
+      .map((h) => h.trim())
+      .filter((h) => /^#?[0-9a-f]{6}$/i.test(h))
+      .map((h) => (h.startsWith("#") ? h : `#${h}`))
+      .slice(0, 6);
+    const clip = (s: string, m: number) => s.trim().slice(0, m);
+    const arrangement = clip(raw.arrangement, 400);
+    const bridges = clip(raw.bridges, 400);
+
+    const directive = [
+      "ARTIST-APPROVED COMPOSITION PLAN (overrides the generic layout template where they differ):",
+      `- Left-to-right order: ${order.map((i) => `Artwork ${i + 1}`).join(", ")}.`,
+      `- Hero / focal piece: Artwork ${heroIndex + 1}. Relative sizes: ${order
+        .map((idx, i) => `Artwork ${idx + 1} = ${scales[i]}%`)
+        .join(", ")}.`,
+      `- Placement: ${arrangement}`,
+      `- Unify into one mural: ${bridges}`,
+      palette.length ? `- Unifying palette accents: ${palette.join(", ")}.` : "",
+      "- Every artwork's subject must still appear exactly as drawn; no new subjects.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    return {
+      heroIndex,
+      order,
+      scales,
+      arrangement,
+      bridges,
+      palette,
+      rationale: clip(raw.rationale, 400),
+      directive,
+    };
+  });
