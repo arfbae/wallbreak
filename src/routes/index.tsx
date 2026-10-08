@@ -83,6 +83,7 @@ function MuralStudio() {
   }, [user]);
 
   const setArtworkAt = (index: number, value: string | null) => {
+    setPlan(null);
     setArtworks((prev) => {
       const next = [...prev];
       next[index] = value;
