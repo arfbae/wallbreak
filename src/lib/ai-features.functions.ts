@@ -85,9 +85,7 @@ export const writeProposalCopy = createServerFn({ method: "POST" })
       .map(([k, v]) => `${k}: ${v}`)
       .join("\n");
 
-    const content: Array<
-      { type: "text"; text: string } | { type: "image"; image: string }
-    > = [];
+    const content: Array<{ type: "text"; text: string } | { type: "image"; image: string }> = [];
     if (data.muralImageUrl) content.push({ type: "image", image: data.muralImageUrl });
     content.push({
       type: "text",
@@ -151,9 +149,7 @@ export const buildPaintPlan = createServerFn({ method: "POST" })
     });
 
     const schema = z.object({
-      colours: z.array(
-        z.object({ name: z.string(), hex: z.string(), coveragePct: z.number() }),
-      ),
+      colours: z.array(z.object({ name: z.string(), hex: z.string(), coveragePct: z.number() })),
       notes: z.string(),
     });
 
