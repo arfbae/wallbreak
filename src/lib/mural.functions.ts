@@ -225,6 +225,7 @@ export const generateMurals = createServerFn({ method: "POST" })
       mode?: "separate" | "combined";
       count?: number;
       keepBackground?: boolean;
+      compositionPlan?: string | null;
     }) => {
       const artworkList: string[] = [];
       if (Array.isArray(input.artworkDataUrls)) artworkList.push(...input.artworkDataUrls);
@@ -271,6 +272,10 @@ export const generateMurals = createServerFn({ method: "POST" })
         mode,
         count,
         keepBackground: input.keepBackground === true,
+        compositionPlan:
+          typeof input.compositionPlan === "string" && input.compositionPlan.trim()
+            ? input.compositionPlan.trim().slice(0, 3000)
+            : null,
       };
     },
   )
@@ -382,7 +387,9 @@ export const generateMurals = createServerFn({ method: "POST" })
             data.wallDataUrl,
             data.variant,
             keys,
-            VARIATIONS[i],
+            [data.artworks.length > 1 ? data.compositionPlan : null, VARIATIONS[i]]
+              .filter(Boolean)
+              .join("\n\n"),
             i,
             isolationRule,
             projectionFor(data.artworks),
