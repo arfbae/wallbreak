@@ -131,7 +131,17 @@ export function MuralTriptych({
                     onClick={async (e) => {
                       e.stopPropagation();
                       try {
-                        await saveLibraryItem("mockup", m.imageUrl!, m.name);
+                        let url = m.imageUrl!;
+                        if (!url.startsWith("data:")) {
+                          const blob = await (await fetch(url)).blob();
+                          url = await new Promise<string>((res, rej) => {
+                            const r = new FileReader();
+                            r.onload = () => res(r.result as string);
+                            r.onerror = rej;
+                            r.readAsDataURL(blob);
+                          });
+                        }
+                        await saveLibraryItem("mockup", url, m.name);
                         toast.success("Mockup saved to library");
                       } catch {
                         toast.error("Could not save mockup.");
