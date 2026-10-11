@@ -282,6 +282,7 @@ export function UploadZone({
               title={`Artwork ${i + 1}`}
               placeholderTitle={i === 0 ? "Drop artwork" : "+ Add artwork"}
               hint={i === 0 ? "required · PNG / JPG" : "optional"}
+              libraryKind="artwork"
             />
           ))}
         </div>
@@ -293,6 +294,7 @@ export function UploadZone({
           placeholderTitle="Drop wall image"
           hint="background for all mockups"
           compact
+          libraryKind="wall"
         />
       </div>
 
