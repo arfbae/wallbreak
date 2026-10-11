@@ -229,20 +229,23 @@ function DropBox({
           {imageUrl ? "Click to replace" : hint}
         </div>
       </div>
-      {imageUrl && onClear ? (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onClear();
-          }}
-          className="rounded-md p-1 text-white/40 hover:bg-white/10 hover:text-white"
-          aria-label="Remove"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      ) : (
-        <Upload className="h-5 w-5 text-white/40 transition-transform group-hover:translate-y-[-2px]" />
-      )}
+      <div className="flex flex-col items-center gap-1">
+        {imageUrl && onClear ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onClear();
+            }}
+            className="rounded-md p-1 text-white/40 hover:bg-white/10 hover:text-white"
+            aria-label="Remove"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        ) : (
+          <Upload className="h-5 w-5 text-white/40 transition-transform group-hover:translate-y-[-2px]" />
+        )}
+        {libraryKind && <LibraryPickerButton kind={libraryKind} onPick={onFile} />}
+      </div>
     </div>
   );
 }
