@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, BookmarkPlus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { saveLibraryItem } from "@/lib/library";
 import { cn } from "@/lib/utils";
 import { DebugOverlay } from "./DebugOverlay";
 
@@ -120,6 +122,26 @@ export function MuralTriptych({
                 <div className="rounded-md bg-black/50 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-white/80 backdrop-blur-md">
                   {String(i + 1).padStart(2, "0")} / {String(slots.length).padStart(2, "0")}
                 </div>
+                {m.imageUrl && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Save mockup to library"
+                    title="Save mockup to library"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        await saveLibraryItem("mockup", m.imageUrl!, m.name);
+                        toast.success("Mockup saved to library");
+                      } catch {
+                        toast.error("Could not save mockup.");
+                      }
+                    }}
+                    className="pointer-events-auto ml-auto mr-2 rounded-md bg-black/50 p-1.5 text-white/80 backdrop-blur-md hover:bg-black/70 hover:text-white"
+                  >
+                    <BookmarkPlus className="h-3.5 w-3.5" />
+                  </span>
+                )}
                 {isSelected && (
                   <div className="rounded-md bg-[var(--studio-accent)] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-black">
                     Selected

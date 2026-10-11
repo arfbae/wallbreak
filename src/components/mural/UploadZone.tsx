@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Upload, ImageIcon, X, Loader2, FolderOpen, BookmarkPlus } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { Upload, ImageIcon, X, Loader2, BookmarkPlus } from "lucide-react";
 import { LibraryPicker } from "./LibraryPicker";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
