@@ -1,7 +1,7 @@
 import { get, set, del, keys } from "idb-keyval";
 import { supabase } from "@/integrations/supabase/client";
 
-export type LibraryKind = "artwork" | "wall";
+export type LibraryKind = "artwork" | "wall" | "mockup";
 
 export interface LibraryItem {
   id: string;
@@ -216,7 +216,9 @@ export async function saveLibraryItem(
   const item: LibraryItem = {
     id,
     kind,
-    name: name ?? `${kind === "artwork" ? "Artwork" : "Wall"} ${new Date().toLocaleString()}`,
+    name:
+      name ??
+      `${kind === "artwork" ? "Artwork" : kind === "wall" ? "Wall" : "Mockup"} ${new Date().toLocaleString()}`,
     dataUrl,
     createdAt: now,
     updatedAt: now,

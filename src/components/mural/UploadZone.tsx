@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Upload, ImageIcon, X, Loader2, FolderOpen } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { Upload, ImageIcon, X, Loader2, BookmarkPlus } from "lucide-react";
+import { LibraryPicker } from "./LibraryPicker";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { prepareImageFile, ImageIntakeError } from "@/lib/image-file";
-import { listLibrary, type LibraryItem, type LibraryKind } from "@/lib/library";
+import { saveLibraryItem, type LibraryKind } from "@/lib/library";
 
 interface Props {
   artworkUrls: (string | null)[]; // length 3
@@ -30,92 +31,6 @@ interface DropBoxProps {
   hint: string;
   compact?: boolean;
   libraryKind?: LibraryKind;
-}
-
-function LibraryPickerButton({
-  kind,
-  onPick,
-}: {
-  kind: LibraryKind;
-  onPick: (dataUrl: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<LibraryItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, [open]);
-
-  const toggle = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (open) {
-      setOpen(false);
-      return;
-    }
-    setOpen(true);
-    setLoading(true);
-    try {
-      const all = await listLibrary();
-      setItems(all.filter((i) => i.kind === kind && i.dataUrl));
-    } catch {
-      toast.error("Could not load your library.");
-      setOpen(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
-      <button
-        onClick={toggle}
-        className="rounded-md p-1 text-white/40 hover:bg-white/10 hover:text-white"
-        aria-label={`Pick ${kind} from library`}
-        title={`Pick ${kind} from library`}
-      >
-        <FolderOpen className="h-4 w-4" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-xl border border-white/10 bg-[var(--studio-panel)] p-2 shadow-xl shadow-black/50">
-          <div className="mb-1.5 px-1 font-mono text-[9px] uppercase tracking-[0.18em] text-white/40">
-            Library · {kind}s
-          </div>
-          {loading ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-4 w-4 animate-spin text-white/50" />
-            </div>
-          ) : items.length === 0 ? (
-            <div className="px-1 py-2 text-[11px] text-white/35">
-              Nothing saved yet. Save items from the Library panel below.
-            </div>
-          ) : (
-            <div className="grid max-h-48 grid-cols-3 gap-1.5 overflow-y-auto">
-              {items.map((it) => (
-                <button
-                  key={it.id}
-                  onClick={() => {
-                    onPick(it.dataUrl);
-                    setOpen(false);
-                  }}
-                  title={it.name}
-                  className="aspect-square overflow-hidden rounded-lg ring-1 ring-white/10 transition-all hover:ring-[var(--studio-accent)]"
-                >
-                  <img src={it.dataUrl} alt={it.name} className="h-full w-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
 }
 
 function DropBox({
@@ -244,7 +159,25 @@ function DropBox({
         ) : (
           <Upload className="h-5 w-5 text-white/40 transition-transform group-hover:translate-y-[-2px]" />
         )}
-        {libraryKind && <LibraryPickerButton kind={libraryKind} onPick={onFile} />}
+        {libraryKind && imageUrl && (
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                await saveLibraryItem(libraryKind, imageUrl);
+                toast.success(`Saved ${libraryKind} to library`);
+              } catch {
+                toast.error("Could not save to library.");
+              }
+            }}
+            className="rounded-md p-1 text-white/40 hover:bg-white/10 hover:text-white"
+            aria-label={`Save ${libraryKind} to library`}
+            title={`Save ${libraryKind} to library`}
+          >
+            <BookmarkPlus className="h-4 w-4" />
+          </button>
+        )}
+        {libraryKind && <LibraryPicker kind={libraryKind} onPick={onFile} />}
       </div>
     </div>
   );
