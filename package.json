@@ -59,6 +59,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.39.0",
     "idb-keyval": "^6.3.0",
+    "imagetracerjs": "^1.2.6",
     "input-otp": "^1.4.2",
     "jsfeat": "^0.0.8",
     "jspdf": "^4.2.1",
