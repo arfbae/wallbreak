@@ -8,7 +8,13 @@ export function outlinePixels(
   detail = 65,
   lineWidth = 1,
 ): Uint8ClampedArray {
-  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || rgba.length !== width * height * 4) {
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    width < 1 ||
+    height < 1 ||
+    rgba.length !== width * height * 4
+  ) {
     throw new Error("The image could not be read.");
   }
   const gray = new jsfeat.matrix_t(width, height, jsfeat.U8C1_t);
@@ -45,7 +51,8 @@ export async function loadOutlineSource(url: string): Promise<HTMLImageElement> 
   } catch {
     throw new Error("This mockup could not be opened. Please try again.");
   }
-  if (!image.naturalWidth || !image.naturalHeight) throw new Error("This mockup has no readable image.");
+  if (!image.naturalWidth || !image.naturalHeight)
+    throw new Error("This mockup has no readable image.");
   return image;
 }
 

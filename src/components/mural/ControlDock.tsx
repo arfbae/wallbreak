@@ -64,8 +64,14 @@ export function ControlDock({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" className="h-10" disabled={!canOutline || isGenerating} onClick={onOutline}>
-          <PenLine />Outline
+        <Button
+          variant="outline"
+          className="h-10"
+          disabled={!canOutline || isGenerating}
+          onClick={onOutline}
+        >
+          <PenLine />
+          Outline
         </Button>
         <button
           onClick={onToggleDebug}
