@@ -12,6 +12,7 @@ import { MuralTriptych, type Mural } from "@/components/mural/MuralTriptych";
 import { ControlDock } from "@/components/mural/ControlDock";
 import { CinematicReveal } from "@/components/mural/CinematicReveal";
 import { ProposalDialog } from "@/components/mural/ProposalDialog";
+import { OutlineDialog } from "@/components/mural/OutlineDialog";
 
 import {
   ApiKeyField,
@@ -53,6 +54,7 @@ function MuralStudio() {
   const [selected, setSelected] = useState<string | null>(null);
   const [revealOpen, setRevealOpen] = useState(false);
   const [proposalOpen, setProposalOpen] = useState(false);
+  const [outlineOpen, setOutlineOpen] = useState(false);
 
   const [retryNonce, setRetryNonce] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
@@ -253,6 +255,8 @@ function MuralStudio() {
             onRetry={() => mutation.mutate("retry")}
             onReveal={() => setRevealOpen(true)}
             onProposal={() => setProposalOpen(true)}
+            onOutline={() => setOutlineOpen(true)}
+            canOutline={Boolean(selectedMural?.imageUrl)}
             isGenerating={mutation.isPending}
             muralIds={muralIds}
             showDebug={showDebug}
@@ -270,6 +274,14 @@ function MuralStudio() {
         imageUrl={selectedMural?.imageUrl ?? null}
         name={selectedMural?.name ?? null}
         onClose={() => setRevealOpen(false)}
+      />
+
+      <OutlineDialog
+        key={selectedMural?.imageUrl ?? "empty-outline"}
+        open={outlineOpen}
+        onOpenChange={setOutlineOpen}
+        imageUrl={selectedMural?.imageUrl ?? null}
+        name={selectedMural?.name ?? null}
       />
 
       <ProposalDialog

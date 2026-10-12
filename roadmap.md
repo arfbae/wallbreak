@@ -2,6 +2,10 @@
 
 Working through the audit findings one at a time.
 
+## Current request — outline export
+- [ ] Convert the selected mockup into a full-scene black-and-white outline with detail and line-weight controls, preview, download, and library save.
+- [ ] Verify contour processing and the selected-mockup export flow.
+
 ## Phase 1 — safe to leave published
 - [x] Meter the server AI key: signed-in only + 30 renders / rolling 24h quota (`generation_usage` table, `gen-guard.server.ts`)
 - [ ] Quote / cost calculator (sq m × rate, prep, travel) feeding the PDF proposal

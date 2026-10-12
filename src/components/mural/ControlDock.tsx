@@ -1,4 +1,5 @@
-import { RefreshCw, Play, Crosshair, FileText } from "lucide-react";
+import { RefreshCw, Play, Crosshair, FileText, PenLine } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -8,6 +9,8 @@ interface Props {
   onRetry: () => void;
   onReveal: () => void;
   onProposal: () => void;
+  onOutline: () => void;
+  canOutline: boolean;
   isGenerating: boolean;
   muralIds: string[];
   showDebug: boolean;
@@ -21,6 +24,8 @@ export function ControlDock({
   onRetry,
   onReveal,
   onProposal,
+  onOutline,
+  canOutline,
 
   isGenerating,
   muralIds,
@@ -58,7 +63,10 @@ export function ControlDock({
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" className="h-10" disabled={!canOutline || isGenerating} onClick={onOutline}>
+          <PenLine />Outline
+        </Button>
         <button
           onClick={onToggleDebug}
           disabled={!hasMurals}
