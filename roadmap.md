@@ -4,8 +4,8 @@ Working through the audit findings one at a time.
 
 ## Current request — outline export
 
-- [ ] Convert the selected mockup into a full-scene black-and-white outline with detail and line-weight controls, preview, download, and library save.
-- [ ] Verify contour processing and the selected-mockup export flow.
+- [x] Convert the selected mockup into a full-scene black-and-white outline with detail and line-weight controls, preview, download, and library save.
+- [x] Verify contour processing and the selected-mockup export flow (41 tests passing; fixture-based browser checks for comparison, adjustments, download, library save, and mobile layout).
 
 ## Phase 1 — safe to leave published
 
