@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { outlinePixels } from "../outline";
+import { outlinePixels, outlineSvg } from "../outline";
 
 function scene() {
   const width = 100;
@@ -20,6 +20,30 @@ function scene() {
 }
 
 describe("full-scene outline", () => {
+  it("exports vector-only black contours with a full-scene viewBox and no background", () => {
+    const { pixels, width, height } = scene();
+    const svg = outlineSvg(outlinePixels(pixels, width, height), width, height);
+    expect(svg).toContain('viewBox="0 0 100 60"');
+    expect(svg).toContain('<path ');
+    expect(svg).toContain('fill="rgb(0,0,0)"');
+    expect(svg).not.toMatch(/<image|<rect|data:image|rgb\(255,255,255\)/);
+    expect(svg).toMatch(/Z/);
+  });
+  it("exports blank scenes as transparent SVGs without paths", () => {
+    const svg = outlineSvg(new Uint8ClampedArray(40 * 40 * 4).fill(255), 40, 40);
+    expect(svg).toContain('viewBox="0 0 40 40"');
+    expect(svg).not.toContain('<path');
+  });
+  it("uses explicit Canny thresholds to control faint contours", () => {
+    const { pixels, width, height } = scene();
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (pixels[i] === 0) pixels[i] = pixels[i + 1] = pixels[i + 2] = 230;
+    }
+    const count = (data: Uint8ClampedArray) => data.filter((v, i) => i % 4 === 0 && v === 0).length;
+    expect(count(outlinePixels(pixels, width, height, 65, 1, 10))).toBeGreaterThan(
+      count(outlinePixels(pixels, width, height, 65, 1, 255)),
+    );
+  });
   it("retains dimensions, outlines both scene objects, and produces only opaque black and white", () => {
     const { pixels, width, height } = scene();
     const before = pixels.slice();
