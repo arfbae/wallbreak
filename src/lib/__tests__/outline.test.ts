@@ -24,7 +24,7 @@ describe("full-scene outline", () => {
     const { pixels, width, height } = scene();
     const svg = outlineSvg(outlinePixels(pixels, width, height), width, height);
     expect(svg).toContain('viewBox="0 0 100 60"');
-    expect(svg).toContain('<path ');
+    expect(svg).toContain("<path ");
     expect(svg).toContain('fill="rgb(0,0,0)"');
     expect(svg).not.toMatch(/<image|<rect|data:image|rgb\(255,255,255\)/);
     expect(svg).toMatch(/Z/);
@@ -32,7 +32,7 @@ describe("full-scene outline", () => {
   it("exports blank scenes as transparent SVGs without paths", () => {
     const svg = outlineSvg(new Uint8ClampedArray(40 * 40 * 4).fill(255), 40, 40);
     expect(svg).toContain('viewBox="0 0 40 40"');
-    expect(svg).not.toContain('<path');
+    expect(svg).not.toContain("<path");
   });
   it("uses explicit Canny thresholds to control faint contours", () => {
     const { pixels, width, height } = scene();
