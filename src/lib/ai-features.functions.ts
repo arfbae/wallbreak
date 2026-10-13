@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { GRAFFITI_ANALYSIS_GUIDANCE, GRAFFITI_RENDER_GUIDANCE } from "./graffiti-style";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1";
 const MAX_IMAGE_CHARS = 8 * 1024 * 1024;
@@ -275,7 +276,9 @@ export const planComposition = createServerFn({ method: "POST" })
     content.push({
       type: "text",
       text: `You are a lead muralist planning ONE unified mural that combines these ${n} artworks${data.wallUrl ? " on the wall shown" : ""}. ${data.keepBackground ? "Each artwork's background is part of the piece." : "Only each artwork's main subject will be painted."}
-Decide: heroArtwork (1-based number of the strongest focal piece); leftToRightOrder (1-based artwork numbers, every artwork exactly once); relativeScalePct (size of each artwork in that left-to-right order, hero = 100, others 30-80, follow Fibonacci-like 8:5:3 hierarchy); arrangement (one sentence: where each piece sits on the wall, using golden-section / rule-of-thirds positions${data.wallUrl ? " and avoiding windows, doors, pipes and occluders you can see" : ""}); bridges (one or two sentences: shared background wash, connecting motifs, overlaps or colour transitions that make the pieces read as one mural instead of separate stickers); palette (4-6 #RRGGBB unifying colours drawn from the artworks); rationale (two short plain-English sentences for the artist explaining why this works). Never invent new subjects.`,
+Decide: heroArtwork (1-based number of the strongest focal piece); leftToRightOrder (1-based artwork numbers, every artwork exactly once); relativeScalePct (size of each artwork in that left-to-right order, hero = 100, others 30-80, follow Fibonacci-like 8:5:3 hierarchy); arrangement (one sentence: where each piece sits on the wall, using golden-section / rule-of-thirds positions${data.wallUrl ? " and avoiding windows, doors, pipes and occluders you can see" : ""}); bridges (one or two sentences: connecting motifs, compatible keyline rhythm or colour echoes that make the pieces read as one mural instead of separate stickers, without obscuring lettering or changing subjects); palette (4-6 #RRGGBB unifying accent colours drawn from the artworks, not replacement subject colours); rationale (two short plain-English sentences for the artist explaining why this works). Never invent new subjects. ${data.keepBackground ? "Keep intentional artwork clouds and halos; a shared wash may join existing backdrops." : "Do not introduce a shared background wash or restore discarded backdrops; use negative space and existing structural contours for cohesion."}
+${GRAFFITI_ANALYSIS_GUIDANCE}
+${GRAFFITI_RENDER_GUIDANCE}`,
     });
 
     let raw: z.infer<typeof schema>;
@@ -307,7 +310,7 @@ Decide: heroArtwork (1-based number of the strongest focal piece); leftToRightOr
       .filter((v) => valid(v) && !seen.has(v) && seen.add(v))
       .map((v) => v - 1);
     for (let i = 0; i < n; i++) if (!order.includes(i)) order.push(i);
-    const heroIndex = valid(raw.heroArtwork) ? raw.heroArtwork - 1 : order[0]!;
+    const heroIndex = valid(raw.heroArtwork) ? raw.heroArtwork - 1 : (order[0] ?? 0);
     const scales = order.map((idx, i) =>
       idx === heroIndex
         ? 100
@@ -332,6 +335,10 @@ Decide: heroArtwork (1-based number of the strongest focal piece); leftToRightOr
       `- Unify into one mural: ${bridges}`,
       palette.length ? `- Unifying palette accents: ${palette.join(", ")}.` : "",
       "- Every artwork's subject must still appear exactly as drawn; no new subjects.",
+      data.keepBackground
+        ? "- Preserve intentional artwork backgrounds, clouds and halos; discard only source-photo clutter."
+        : "- No backdrop washes: preserve subject-attached keylines and painted extrusion, using negative space for cohesion.",
+      "- Preserve reference letter shapes and character interlocks; painted depth stays inside the target wall plane.",
     ]
       .filter(Boolean)
       .join("\n");

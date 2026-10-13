@@ -9,6 +9,13 @@
  * folded into the render prompt as an explicit isolation instruction.
  */
 
+import {
+  GRAFFITI_ANALYSIS_GUIDANCE,
+  graffitiAnalysisRule,
+  parseGraffitiAnalysis,
+  type GraffitiAnalysis,
+} from "./graffiti-style";
+
 export type ArtworkSourceKind =
   | "clean-artwork" // already an isolated artwork file
   | "photo-of-artwork" // camera photo of a canvas/page/wall
@@ -29,6 +36,7 @@ export type ArtworkAnalysis = {
   /** Things that must NOT be painted (frame, table, cursor, hand, glare...). */
   discard: string[];
   confidence: number;
+  graffiti?: GraffitiAnalysis | null;
   raw?: string;
 };
 
@@ -42,7 +50,8 @@ export const ISOLATION_PROMPT =
   "watermarks, glare or shadows falling on the artwork, perspective keystone). " +
   'Reply with JSON ONLY: {"kind": "clean-artwork|photo-of-artwork|screenshot|scene-with-artwork|unclear", ' +
   '"bbox": {"x":0,"y":0,"w":1,"h":1}, "subject": "short description", "removeBackground": boolean, ' +
-  '"discard": ["..."], "confidence": 0-1}.';
+  '"discard": ["..."], "confidence": 0-1, "graffiti": {"style":"throw-up|straight-letter|standard-piece|character-piece|not-graffiti|unclear", "text":null, "textConfidence":0, "layers":[], "extrusion":"none|parallel|converging|unclear", "characterIntegration":"", "preservationNotes":[]}}.\n' +
+  GRAFFITI_ANALYSIS_GUIDANCE;
 
 const KINDS: ArtworkSourceKind[] = [
   "clean-artwork",
@@ -98,7 +107,11 @@ export function parseArtworkAnalysis(text: string | null | undefined): ArtworkAn
   const removeBackground =
     o.removeBackground === true || kind !== "clean-artwork" || cropped || discard.length > 0;
 
-  return { kind, bbox, subject, removeBackground, discard, confidence, raw: text.slice(0, 400) };
+  return {
+    kind, bbox, subject, removeBackground, discard, confidence,
+    graffiti: parseGraffitiAnalysis(o.graffiti),
+    raw: text.slice(0, 400),
+  };
 }
 
 export type AnalysisDeps = {
@@ -176,6 +189,8 @@ export function buildIsolationRule(
         parts.push(`still do not paint: ${a.discard.slice(0, 8).join(", ")}`);
       }
       keepLines.push(`${parts.join("; ")}.`);
+      const graffiti = graffitiAnalysisRule(a.graffiti, i);
+      if (graffiti) keepLines.push(graffiti);
     });
     return keepLines.join("\n");
   }
@@ -205,6 +220,8 @@ export function buildIsolationRule(
     if (a.removeBackground) parts.push("discard its surrounding background entirely");
     if (a.discard.length > 0) parts.push(`do not paint: ${a.discard.slice(0, 8).join(", ")}`);
     lines.push(`${parts.join("; ")}.`);
+    const graffiti = graffitiAnalysisRule(a.graffiti, i);
+    if (graffiti) lines.push(graffiti);
   });
 
   return lines.join("\n");
