@@ -4,7 +4,7 @@ Working through the audit findings one at a time.
 
 ## Current request — outline export
 
-- [ ] Add explicit Canvas Canny threshold control and transparent vector SVG export; verify processing and downloads.
+- [x] Add explicit Canvas Canny threshold control and transparent vector SVG export; verified SVG/PNG browser downloads, transparent backgrounds and 3× vector rendering with a full-scene fixture; all 44 tests pass.
 - [x] Convert the selected mockup into a full-scene black-and-white outline with detail and line-weight controls, preview, download, and library save.
 - [x] Verify contour processing and the selected-mockup export flow (41 tests passing; fixture-based browser checks for comparison, adjustments, download, library save, and mobile layout).
 

@@ -21,12 +21,13 @@ interface Props {
 }
 
 export function OutlineDialog({ open, onOpenChange, imageUrl, name }: Props) {
-  const [detail, setDetail] = useState(65);
+  const [threshold, setThreshold] = useState(48);
   const [lineWidth, setLineWidth] = useState(1);
   const [original, setOriginal] = useState(false);
   const [result, setResult] = useState<ReturnType<typeof createOutline> | null>(null);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
 
@@ -40,7 +41,7 @@ export function OutlineDialog({ open, onOpenChange, imageUrl, name }: Props) {
       void loadOutlineSource(imageUrl)
         .then((image) => {
           if (cancelled) return;
-          const next = createOutline(image, detail, lineWidth);
+          const next = createOutline(image, 65, lineWidth, threshold);
           if (!cancelled) setResult(next);
         })
         .catch((err: unknown) => {
@@ -55,7 +56,28 @@ export function OutlineDialog({ open, onOpenChange, imageUrl, name }: Props) {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [open, imageUrl, detail, lineWidth, retry]);
+  }, [open, imageUrl, threshold, lineWidth, retry]);
+
+  const downloadSvg = async () => {
+    if (!result || busy || exporting) return;
+    setExporting(true);
+    try {
+      // Allow the progress state to paint before tracing the contour matrix.
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 50));
+      const url = URL.createObjectURL(new Blob([result.toSvg()], { type: "image/svg+xml" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${(name ?? "mural").replace(/[^a-z0-9_-]+/gi, "-")}-outline.svg`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    } catch {
+      toast.error("Could not export the SVG. Try again or download the PNG.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const save = async () => {
     if (!result || busy || saving) return;
@@ -107,17 +129,18 @@ export function OutlineDialog({ open, onOpenChange, imageUrl, name }: Props) {
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="space-y-3">
-            <label htmlFor="outline-detail" className="flex justify-between text-sm">
-              Detail<output>{detail}%</output>
+            <label htmlFor="outline-threshold" className="flex justify-between text-sm">
+              Edge threshold<output>{threshold}</output>
             </label>
             <Slider
-              id="outline-detail"
-              aria-label="Outline detail"
-              min={0}
-              max={100}
-              step={5}
-              value={[detail]}
-              onValueChange={(v) => setDetail(v[0] ?? 65)}
+              id="outline-threshold"
+              aria-label="Outline edge threshold"
+              min={1}
+              max={255}
+              step={1}
+              value={[threshold]}
+              disabled={exporting}
+              onValueChange={(v) => setThreshold(v[0] ?? 48)}
             />
           </div>
           <div className="space-y-3">
@@ -131,6 +154,7 @@ export function OutlineDialog({ open, onOpenChange, imageUrl, name }: Props) {
               max={3}
               step={1}
               value={[lineWidth]}
+              disabled={exporting}
               onValueChange={(v) => setLineWidth(v[0] ?? 1)}
             />
           </div>
@@ -146,7 +170,7 @@ export function OutlineDialog({ open, onOpenChange, imageUrl, name }: Props) {
             </Button>
             {result && !busy && (
               <span className="text-xs text-muted-foreground">
-                {result.width} × {result.height} · PNG
+                {result.width} × {result.height}
               </span>
             )}
           </div>
@@ -169,7 +193,11 @@ export function OutlineDialog({ open, onOpenChange, imageUrl, name }: Props) {
               }}
             >
               <Download />
-              Download outline
+              Download PNG
+            </Button>
+            <Button disabled={!result || busy || exporting} onClick={() => void downloadSvg()}>
+              {exporting ? <Loader2 className="animate-spin" /> : <Download />}
+              {exporting ? "Exporting SVG…" : "Download SVG"}
             </Button>
           </div>
         </div>
