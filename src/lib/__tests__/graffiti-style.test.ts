@@ -86,7 +86,9 @@ describe("background choice is respected for graffiti pieces", () => {
   });
 
   it("guidance covers both background choices", () => {
-    expect(GRAFFITI_RENDER_GUIDANCE).toContain("When backgrounds are kept preserve intentional clouds");
+    expect(GRAFFITI_RENDER_GUIDANCE).toContain(
+      "When backgrounds are kept preserve intentional clouds",
+    );
     expect(GRAFFITI_RENDER_GUIDANCE).toContain(
       "When backgrounds are removed omit backdrop clouds/washes but preserve structural keylines",
     );
