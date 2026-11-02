@@ -3,7 +3,11 @@ import { assertPromptIntegrity, buildMuralPrompt } from "./mural-prompt";
 import { buildResourcePlan, renderImageWithFailover } from "./generation-router";
 import { classifyRenderedMedium } from "./mural-classifier";
 import { hashPrompt, logRender, newCorrelationId } from "./render-log";
-import { analyzeArtworkSource, buildIsolationRule } from "./artwork-analysis";
+import {
+  analyzeArtworkSource,
+  buildIsolationRule,
+  needsGeneratedBackdrop,
+} from "./artwork-analysis";
 import { letteringSignal, type LetteringSignal } from "./graffiti-style";
 import {
   analyzeWallGeometry,
@@ -350,6 +354,7 @@ export const generateMurals = createServerFn({ method: "POST" })
     const signals = analyses.map((a, i) => letteringSignal(a?.graffiti, i));
     const letteringFor = (idx: number[]): LetteringSignal[] =>
       idx.map((i) => signals[i]).filter((s): s is LetteringSignal => !!s);
+    const backdropFor = (idx: number[]) => idx.some((i) => needsGeneratedBackdrop(analyses[i]));
 
     // Projection mapping: measure the wall's paintable quad once, then give
     // every render explicit target coordinates instead of "paint on the wall".
@@ -402,6 +407,7 @@ export const generateMurals = createServerFn({ method: "POST" })
             index: i,
             name: data.count > 1 ? `Mockup ${i + 1}` : "Combined Mural",
             lettering: letteringFor(data.artworks.map((_, k) => k)),
+            backdropAdded: backdropFor(data.artworks.map((_, k) => k)),
           }));
         }),
       );
@@ -429,6 +435,7 @@ export const generateMurals = createServerFn({ method: "POST" })
           index: i,
           name: `Artwork ${i + 1}`,
           lettering: letteringFor([i]),
+          backdropAdded: backdropFor([i]),
         }));
       }),
     );
