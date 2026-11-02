@@ -103,6 +103,7 @@
   },
   "overrides": {
     "seroval": "^1.6.2",
-    "seroval-plugins": "^1.6.2"
+    "seroval-plugins": "^1.6.2",
+    "dompurify": "^3.4.17"
   }
 }
