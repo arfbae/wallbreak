@@ -36,6 +36,8 @@ export type ArtworkAnalysis = {
   /** Things that must NOT be painted (frame, table, cursor, hand, glare...). */
   discard: string[];
   confidence: number;
+  /** false = isolated subject on blank/white/transparent ground (no backdrop of its own). */
+  hasOwnBackground?: boolean | null;
   graffiti?: GraffitiAnalysis | null;
   raw?: string;
 };
@@ -48,9 +50,12 @@ export const ISOLATION_PROMPT =
   "pixels must be discarded; and a list of elements that must NOT be treated as part of the artwork (photo background, " +
   "table or floor, frame or mount, paper edges, hands or fingers, easel, browser or app UI, cursors, toolbars, " +
   "watermarks, glare or shadows falling on the artwork, perspective keystone). " +
+  "Also say whether the artwork has a background of its OWN (hasOwnBackground): true when the artist painted or drew a backdrop — " +
+  "scenery, colour field, wash, gradient, pattern, cloud or halo; false when the subject sits alone on blank paper, plain white, " +
+  "flat empty colour, a checkerboard or a transparent cut-out. " +
   'Reply with JSON ONLY: {"kind": "clean-artwork|photo-of-artwork|screenshot|scene-with-artwork|unclear", ' +
   '"bbox": {"x":0,"y":0,"w":1,"h":1}, "subject": "short description", "removeBackground": boolean, ' +
-  '"discard": ["..."], "confidence": 0-1, "graffiti": {"style":"throw-up|straight-letter|standard-piece|character-piece|not-graffiti|unclear", "text":null, "textConfidence":0, "layers":[], "extrusion":"none|parallel|converging|unclear", "characterIntegration":"", "preservationNotes":[]}}.\n' +
+  '"discard": ["..."], "confidence": 0-1, "hasOwnBackground": boolean, "graffiti": {"style":"throw-up|straight-letter|standard-piece|character-piece|not-graffiti|unclear", "text":null, "textConfidence":0, "layers":[], "extrusion":"none|parallel|converging|unclear", "characterIntegration":"", "preservationNotes":[]}}.\n' +
   GRAFFITI_ANALYSIS_GUIDANCE;
 
 const KINDS: ArtworkSourceKind[] = [
@@ -114,6 +119,7 @@ export function parseArtworkAnalysis(text: string | null | undefined): ArtworkAn
     removeBackground,
     discard,
     confidence,
+    hasOwnBackground: typeof o.hasOwnBackground === "boolean" ? o.hasOwnBackground : null,
     graffiti: parseGraffitiAnalysis(o.graffiti),
     raw: text.slice(0, 400),
   };
@@ -158,6 +164,28 @@ export async function analyzeArtworkSource(
   }
 }
 
+/** True only when the analyser positively found no backdrop in the artwork. */
+export function needsGeneratedBackdrop(a: ArtworkAnalysis | null | undefined): boolean {
+  return !!a && a.hasOwnBackground === false;
+}
+
+export const GENERATED_BACKDROP_RULE =
+  "GENERATED BACKDROP (artwork has no background of its own): do not leave the subject floating on bare wall. Paint a dynamic, " +
+  "cohesive mural backdrop behind it, designed as part of the same piece: build it from the artwork's own palette (its dominant " +
+  "hues plus one or two accents, harmonised with the wall's existing colour and the scene lighting), and echo the artwork's style " +
+  "and line language — flowing aerosol colour fades, sweeping energy shapes, abstract organic or geometric forms derived from motifs " +
+  "already in the subject, soft halos or clouds for graffiti — with depth and movement that leads the eye to the subject so it stays " +
+  "the clear hero. The backdrop lives inside the same paintable wall area and projection target, ends in loose hand-painted organic " +
+  "edges (never a rectangle, panel or frame), introduces no new figures, characters, text, logos or recognisable objects, and never " +
+  "covers, recolours or restyles the subject. This backdrop is an intentional part of the mural, so it is allowed even where other " +
+  "rules say to paint only the subject's silhouette. When several artworks share one mural, paint ONE continuous backdrop that unifies them.";
+
+function backdropLine(a: ArtworkAnalysis | null, i: number): string | null {
+  return needsGeneratedBackdrop(a)
+    ? `Artwork ${i + 1} has no background of its own — apply the GENERATED BACKDROP rule to it.`
+    : null;
+}
+
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 /**
@@ -194,9 +222,12 @@ export function buildIsolationRule(
         parts.push(`still do not paint: ${a.discard.slice(0, 8).join(", ")}`);
       }
       keepLines.push(`${parts.join("; ")}.`);
+      const backdrop = backdropLine(a, i);
+      if (backdrop) keepLines.push(backdrop);
       const graffiti = graffitiAnalysisRule(a.graffiti, i);
       if (graffiti) keepLines.push(graffiti);
     });
+    if (analyses.some(needsGeneratedBackdrop)) keepLines.push(GENERATED_BACKDROP_RULE);
     return keepLines.join("\n");
   }
   const lines = [
@@ -225,9 +256,12 @@ export function buildIsolationRule(
     if (a.removeBackground) parts.push("discard its surrounding background entirely");
     if (a.discard.length > 0) parts.push(`do not paint: ${a.discard.slice(0, 8).join(", ")}`);
     lines.push(`${parts.join("; ")}.`);
+    const backdrop = backdropLine(a, i);
+    if (backdrop) lines.push(backdrop);
     const graffiti = graffitiAnalysisRule(a.graffiti, i);
     if (graffiti) lines.push(graffiti);
   });
 
+  if (analyses.some(needsGeneratedBackdrop)) lines.push(GENERATED_BACKDROP_RULE);
   return lines.join("\n");
 }
