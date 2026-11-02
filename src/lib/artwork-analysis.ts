@@ -108,7 +108,12 @@ export function parseArtworkAnalysis(text: string | null | undefined): ArtworkAn
     o.removeBackground === true || kind !== "clean-artwork" || cropped || discard.length > 0;
 
   return {
-    kind, bbox, subject, removeBackground, discard, confidence,
+    kind,
+    bbox,
+    subject,
+    removeBackground,
+    discard,
+    confidence,
     graffiti: parseGraffitiAnalysis(o.graffiti),
     raw: text.slice(0, 400),
   };
