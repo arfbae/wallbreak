@@ -177,7 +177,8 @@ export const GENERATED_BACKDROP_RULE =
   "already in the subject, soft halos or clouds for graffiti — with depth and movement that leads the eye to the subject so it stays " +
   "the clear hero. The backdrop lives inside the same paintable wall area and projection target, ends in loose hand-painted organic " +
   "edges (never a rectangle, panel or frame), introduces no new figures, characters, text, logos or recognisable objects, and never " +
-  "covers, recolours or restyles the subject. When several artworks share one mural, paint ONE continuous backdrop that unifies them.";
+  "covers, recolours or restyles the subject. This backdrop is an intentional part of the mural, so it is allowed even where other " +
+  "rules say to paint only the subject's silhouette. When several artworks share one mural, paint ONE continuous backdrop that unifies them.";
 
 function backdropLine(a: ArtworkAnalysis | null, i: number): string | null {
   return needsGeneratedBackdrop(a)

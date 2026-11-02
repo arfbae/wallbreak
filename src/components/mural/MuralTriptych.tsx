@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { AlertCircle, BookmarkPlus, Loader2, Type } from "lucide-react";
+import { AlertCircle, BookmarkPlus, Layers, Loader2, Type } from "lucide-react";
 import type { LetteringSignal } from "@/lib/graffiti-style";
 import { toast } from "sonner";
 import { saveLibraryItem } from "@/lib/library";
@@ -12,6 +12,7 @@ export type Mural = {
   imageUrl: string | null;
   error?: string;
   lettering?: LetteringSignal[];
+  backdropAdded?: boolean;
 };
 
 function letteringLabel(
@@ -187,6 +188,17 @@ export function MuralTriptych({
                 )}
               </div>
               <div className="space-y-1">
+                {(m as Mural).backdropAdded && (
+                  <div className="pb-1">
+                    <span
+                      title="The artwork had no background, so a matching painted backdrop was added."
+                      className="inline-flex items-center gap-1 rounded-md bg-black/60 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-white/85 backdrop-blur-md"
+                    >
+                      <Layers className="h-3 w-3" />
+                      Backdrop added
+                    </span>
+                  </div>
+                )}
                 {(m as Mural).lettering?.length ? (
                   <div className="flex flex-wrap gap-1 pb-1">
                     {(m as Mural).lettering!.map((s) => {

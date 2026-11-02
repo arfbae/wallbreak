@@ -428,7 +428,9 @@ export const generateMurals = createServerFn({ method: "POST" })
           keys,
           undefined,
           0,
-          isolationRule,
+          // One artwork per render: give it its own isolation rule so the
+          // "Artwork 1" references (backdrop, graffiti) describe this upload.
+          buildIsolationRule([analyses[i] ?? null], data.keepBackground),
           projectionFor([artworkDataUrl]),
         ).then((r) => ({
           ...r,
