@@ -4,6 +4,7 @@ import { buildResourcePlan, renderImageWithFailover } from "./generation-router"
 import { classifyRenderedMedium } from "./mural-classifier";
 import { hashPrompt, logRender, newCorrelationId } from "./render-log";
 import { analyzeArtworkSource, buildIsolationRule } from "./artwork-analysis";
+import { letteringSignal, type LetteringSignal } from "./graffiti-style";
 import {
   analyzeWallGeometry,
   buildProjectionRule,
@@ -346,6 +347,9 @@ export const generateMurals = createServerFn({ method: "POST" })
         )
       : [];
     const isolationRule = buildIsolationRule(analyses, data.keepBackground);
+    const signals = analyses.map((a, i) => letteringSignal(a?.graffiti, i));
+    const letteringFor = (idx: number[]): LetteringSignal[] =>
+      idx.map((i) => signals[i]).filter((s): s is LetteringSignal => !!s);
 
     // Projection mapping: measure the wall's paintable quad once, then give
     // every render explicit target coordinates instead of "paint on the wall".
@@ -397,6 +401,7 @@ export const generateMurals = createServerFn({ method: "POST" })
             ...r,
             index: i,
             name: data.count > 1 ? `Mockup ${i + 1}` : "Combined Mural",
+            lettering: letteringFor(data.artworks.map((_, k) => k)),
           }));
         }),
       );
@@ -423,6 +428,7 @@ export const generateMurals = createServerFn({ method: "POST" })
           ...r,
           index: i,
           name: `Artwork ${i + 1}`,
+          lettering: letteringFor([i]),
         }));
       }),
     );

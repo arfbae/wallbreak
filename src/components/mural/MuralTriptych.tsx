@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { AlertCircle, BookmarkPlus, Loader2 } from "lucide-react";
+import { AlertCircle, BookmarkPlus, Loader2, Type } from "lucide-react";
+import type { LetteringSignal } from "@/lib/graffiti-style";
 import { toast } from "sonner";
 import { saveLibraryItem } from "@/lib/library";
 import { cn } from "@/lib/utils";
@@ -10,7 +11,34 @@ export type Mural = {
   name: string;
   imageUrl: string | null;
   error?: string;
+  lettering?: LetteringSignal[];
 };
+
+function letteringLabel(
+  s: LetteringSignal,
+  multi: boolean,
+): { text: string; tone: string; title: string } {
+  const prefix = multi ? `A${s.artwork} · ` : "";
+  const pct = Math.round(s.confidence * 100);
+  if (s.status === "read")
+    return {
+      text: `${prefix}Letters read “${s.text}” · ${pct}%`,
+      tone: "bg-emerald-500/80 text-black",
+      title: "Lettering was clearly legible and copied exactly.",
+    };
+  if (s.status === "preserved-shapes")
+    return {
+      text: `${prefix}Shapes kept · word unclear (${pct}%)`,
+      tone: "bg-amber-400/90 text-black",
+      title:
+        "Lettering wasn't clear enough to read, so letter shapes were preserved instead of guessing a word.",
+    };
+  return {
+    text: `${prefix}Style unclear · shapes kept`,
+    tone: "bg-white/80 text-black",
+    title: "Couldn't tell the graffiti style; letter shapes preserved, no word guessed.",
+  };
+}
 
 interface Props {
   murals: Mural[] | null;
@@ -159,6 +187,26 @@ export function MuralTriptych({
                 )}
               </div>
               <div className="space-y-1">
+                {(m as Mural).lettering?.length ? (
+                  <div className="flex flex-wrap gap-1 pb-1">
+                    {(m as Mural).lettering!.map((s) => {
+                      const l = letteringLabel(s, (m as Mural).lettering!.length > 1);
+                      return (
+                        <span
+                          key={s.artwork}
+                          title={l.title}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em]",
+                            l.tone,
+                          )}
+                        >
+                          <Type className="h-3 w-3" />
+                          {l.text}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 <div className="font-display text-lg leading-tight text-white drop-shadow-lg">
                   {m.name}
                 </div>

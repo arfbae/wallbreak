@@ -84,3 +84,25 @@ export function graffitiAnalysisRule(
     .filter(Boolean)
     .join(" ");
 }
+
+export type LetteringStatus = "read" | "preserved-shapes" | "unclear-style";
+export type LetteringSignal = {
+  artwork: number;
+  status: LetteringStatus;
+  text: string | null;
+  confidence: number;
+};
+
+/** Per-artwork lettering status for the UI; null when the artwork is not graffiti. */
+export function letteringSignal(
+  g: GraffitiAnalysis | null | undefined,
+  index: number,
+): LetteringSignal | null {
+  if (!g || g.style === "not-graffiti") return null;
+  const status: LetteringStatus = g.text
+    ? "read"
+    : g.style === "unclear"
+      ? "unclear-style"
+      : "preserved-shapes";
+  return { artwork: index + 1, status, text: g.text, confidence: g.textConfidence };
+}
