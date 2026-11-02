@@ -69,6 +69,7 @@ export const REQUIRED_PROMPT_MARKERS: Array<{ id: string; needle: string }> = [
   { id: "ANTI_GHOST", needle: "ANTI-GHOST RULE" },
   { id: "STYLE_LOCK", needle: "CRITICAL ARTWORK FIDELITY" },
   { id: "ARTWORK_ISOLATION", needle: "ARTWORK ISOLATION" },
+  { id: "GRAFFITI_PRESERVATION", needle: "GRAFFITI STRUCTURE PRESERVATION (conditional" },
   { id: "COMPOSITION_RULES", needle: "COMPOSITION LOGIC" },
   { id: "FINAL_SELF_CHECK", needle: "FINAL SELF-CHECK" },
 ];

@@ -25,43 +25,62 @@ export type GraffitiAnalysis = {
 };
 
 const styles: GraffitiStyle[] = [
-  "throw-up", "straight-letter", "standard-piece", "character-piece", "not-graffiti", "unclear",
+  "throw-up",
+  "straight-letter",
+  "standard-piece",
+  "character-piece",
+  "not-graffiti",
+  "unclear",
 ];
-const list = (v: unknown): string[] => Array.isArray(v)
-  ? v.filter((s): s is string => typeof s === "string" && Boolean(s.trim()))
-      .slice(0, 8).map((s) => s.trim().slice(0, 200))
-  : [];
+const list = (v: unknown): string[] =>
+  Array.isArray(v)
+    ? v
+        .filter((s): s is string => typeof s === "string" && Boolean(s.trim()))
+        .slice(0, 8)
+        .map((s) => s.trim().slice(0, 200))
+    : [];
 
 export function parseGraffitiAnalysis(value: unknown): GraffitiAnalysis | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const o = value as Record<string, unknown>;
   const style = styles.find((s) => s === o.style) ?? "unclear";
-  const textConfidence = typeof o.textConfidence === "number" && Number.isFinite(o.textConfidence)
-    ? Math.max(0, Math.min(1, o.textConfidence)) : 0;
-  const extrusion = (["none", "parallel", "converging", "unclear"] as const)
-    .find((s) => s === o.extrusion) ?? "unclear";
+  const textConfidence =
+    typeof o.textConfidence === "number" && Number.isFinite(o.textConfidence)
+      ? Math.max(0, Math.min(1, o.textConfidence))
+      : 0;
+  const extrusion =
+    (["none", "parallel", "converging", "unclear"] as const).find((s) => s === o.extrusion) ??
+    "unclear";
   return {
     style,
-    text: style !== "not-graffiti" && textConfidence >= 0.9 && typeof o.text === "string"
-      ? o.text.trim().slice(0, 100) || null : null,
+    text:
+      style !== "not-graffiti" && textConfidence >= 0.9 && typeof o.text === "string"
+        ? o.text.trim().slice(0, 100) || null
+        : null,
     textConfidence,
     layers: list(o.layers),
     extrusion,
-    characterIntegration: typeof o.characterIntegration === "string"
-      ? o.characterIntegration.trim().slice(0, 300) : "",
+    characterIntegration:
+      typeof o.characterIntegration === "string" ? o.characterIntegration.trim().slice(0, 300) : "",
     preservationNotes: list(o.preservationNotes),
   };
 }
 
-export function graffitiAnalysisRule(analysis: GraffitiAnalysis | null | undefined, index: number): string {
+export function graffitiAnalysisRule(
+  analysis: GraffitiAnalysis | null | undefined,
+  index: number,
+): string {
   if (!analysis || analysis.style === "not-graffiti" || analysis.style === "unclear") return "";
   return [
     `Artwork ${index + 1} graffiti analysis (advisory; the image is authoritative): ${analysis.style}.`,
-    analysis.text ? `Clearly legible reference lettering: ${JSON.stringify(analysis.text)}; preserve exactly.`
+    analysis.text
+      ? `Clearly legible reference lettering: ${JSON.stringify(analysis.text)}; preserve exactly.`
       : "Lettering is not confidently readable; preserve the visible shapes, do not guess a word.",
     analysis.layers.length ? `Visible layers: ${analysis.layers.join(", ")}.` : "",
     `Painted extrusion: ${analysis.extrusion}; independent of target wall camera perspective.`,
     analysis.characterIntegration ? `Character integration: ${analysis.characterIntegration}.` : "",
     analysis.preservationNotes.length ? `Preserve: ${analysis.preservationNotes.join("; ")}.` : "",
-  ].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
