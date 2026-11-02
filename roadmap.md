@@ -2,11 +2,9 @@
 
 Working through the audit findings one at a time.
 
-## Current request — outline export
- 
-## Current request — graffiti reference integration
+## Graffiti reference integration
 
-- [ ] Integrate supplied graffiti taxonomy into existing source analysis, mural prompts and combined composition planning; verify style preservation, uncertain lettering and background choices with regression tests.
+- [x] Integrate supplied graffiti taxonomy into existing source analysis, mural prompts and combined composition planning; verified style preservation, uncertain lettering and background choices with 12 regression tests (56 total passing). Real-render check with an actual graffiti photo still pending.
 
 ## Outline export
 
