@@ -116,3 +116,17 @@ describe("graffiti guidance is wired into the pipeline", () => {
     expect(GRAFFITI_RENDER_GUIDANCE).toContain("never override subject fidelity");
   });
 });
+
+import { letteringSignal } from "../graffiti-style";
+describe("lettering confidence indicator", () => {
+  it("reports read text at >= 0.9", () => {
+    expect(letteringSignal(parseGraffitiAnalysis(piece), 0)?.status).toBe("read");
+  });
+  it("reports preserved shapes below 0.9", () => {
+    const s = letteringSignal(parseGraffitiAnalysis({ ...piece, textConfidence: 0.5 }), 1);
+    expect(s).toMatchObject({ status: "preserved-shapes", text: null, artwork: 2 });
+  });
+  it("shows nothing for non-graffiti", () => {
+    expect(letteringSignal(parseGraffitiAnalysis({ style: "not-graffiti" }), 0)).toBeNull();
+  });
+});
