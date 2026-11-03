@@ -13,6 +13,8 @@ export type Mural = {
   error?: string;
   lettering?: LetteringSignal[];
   backdropAdded?: boolean;
+  /** Which uploaded wall this mockup was painted on (multi-wall mode). */
+  wallIndex?: number;
 };
 
 function letteringLabel(

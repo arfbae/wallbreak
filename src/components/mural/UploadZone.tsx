@@ -5,16 +5,17 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { prepareImageFile, ImageIntakeError } from "@/lib/image-file";
 import { saveLibraryItem, type LibraryKind } from "@/lib/library";
+import { expectedMockupCount, type MuralMode } from "@/lib/mural-request";
 
 interface Props {
   artworkUrls: (string | null)[]; // length 3
-  wallUrl: string | null;
+  wallUrls: (string | null)[]; // length 3; slot 0 is the wall for separate/combined
   onArtwork: (index: number, dataUrl: string | null) => void;
-  onWall: (dataUrl: string) => void;
+  onWall: (index: number, dataUrl: string | null) => void;
   onGenerate: () => void;
   isGenerating: boolean;
-  mode: "separate" | "combined";
-  onModeChange: (mode: "separate" | "combined") => void;
+  mode: MuralMode;
+  onModeChange: (mode: MuralMode) => void;
   count: 1 | 2 | 3;
   onCountChange: (count: 1 | 2 | 3) => void;
   keepBackground: boolean;
@@ -185,7 +186,7 @@ function DropBox({
 
 export function UploadZone({
   artworkUrls,
-  wallUrl,
+  wallUrls,
   onArtwork,
   onWall,
   onGenerate,
@@ -197,38 +198,64 @@ export function UploadZone({
   keepBackground,
   onKeepBackgroundChange,
 }: Props) {
+  const multiwall = mode === "multiwall";
   const filledCount = artworkUrls.filter(Boolean).length;
-  const outputs = mode === "combined" ? count : filledCount;
+  const wallCount = wallUrls.filter(Boolean).length;
+  const usedArtworks = multiwall ? Math.min(1, filledCount) : filledCount;
+  const outputs = expectedMockupCount(mode, filledCount, wallCount, count);
+  const missingWall = multiwall && wallCount === 0;
+  const blocked = filledCount === 0 || missingWall || isGenerating;
+  const visibleArtworks = multiwall ? artworkUrls.slice(0, 1) : artworkUrls;
+  const visibleWalls = multiwall ? wallUrls : wallUrls.slice(0, 1);
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
       <div className="flex flex-1 flex-col gap-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          {artworkUrls.map((url, i) => (
+        <div className={cn("grid grid-cols-1 gap-3", !multiwall && "md:grid-cols-3")}>
+          {visibleArtworks.map((url, i) => (
             <DropBox
               key={i}
               compact
               imageUrl={url}
               onFile={(d) => onArtwork(i, d)}
               onClear={() => onArtwork(i, null)}
-              stepLabel={`0${i + 1} · Artwork ${i + 1}`}
+              stepLabel={multiwall ? "01 · Artwork" : `0${i + 1} · Artwork ${i + 1}`}
               title={`Artwork ${i + 1}`}
               placeholderTitle={i === 0 ? "Drop artwork" : "+ Add artwork"}
-              hint={i === 0 ? "required · PNG / JPG" : "optional"}
+              hint={
+                multiwall ? "painted on every wall below" : i === 0 ? "required · PNG / JPG" : "optional"
+              }
               libraryKind="artwork"
             />
           ))}
         </div>
-        <DropBox
-          imageUrl={wallUrl}
-          onFile={onWall}
-          stepLabel="04 · Wall (optional)"
-          title="Wall loaded"
-          placeholderTitle="Drop wall image"
-          hint="background for all mockups"
-          compact
-          libraryKind="wall"
-        />
+        {multiwall && artworkUrls.slice(1).some(Boolean) && (
+          <div className="-mt-2 text-[11px] text-white/45">
+            Only Artwork 1 is used here. Your other artworks are kept for the other modes.
+          </div>
+        )}
+        <div className={cn("grid grid-cols-1 gap-3", multiwall && "md:grid-cols-3")}>
+          {visibleWalls.map((url, i) => (
+            <DropBox
+              key={i}
+              compact
+              imageUrl={url}
+              onFile={(d) => onWall(i, d)}
+              onClear={() => onWall(i, null)}
+              stepLabel={multiwall ? `0${i + 2} · Wall ${i + 1}` : "04 · Wall (optional)"}
+              title={multiwall ? `Wall ${i + 1}` : "Wall loaded"}
+              placeholderTitle={multiwall ? (i === 0 ? "Drop wall photo" : "+ Add wall") : "Drop wall image"}
+              hint={
+                multiwall
+                  ? i === 0
+                    ? "required · 1 mockup per wall"
+                    : "optional"
+                  : "background for all mockups"
+              }
+              libraryKind="wall"
+            />
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 lg:w-[320px]">
@@ -236,11 +263,12 @@ export function UploadZone({
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
             05 · Composition Mode
           </div>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="mt-2 grid grid-cols-3 gap-2">
             {(
               [
                 { id: "separate", label: "Separate", sub: "1 mural per artwork" },
                 { id: "combined", label: "Combined", sub: "all artworks, 1 mural" },
+                { id: "multiwall", label: "Multi-wall", sub: "1 artwork, 1–3 walls" },
               ] as const
             ).map((m) => (
               <button
@@ -285,7 +313,9 @@ export function UploadZone({
           </div>
           {mode !== "combined" && (
             <div className="mt-2 text-[10px] leading-tight text-white/35">
-              Separate mode renders one mockup per uploaded artwork.
+              {multiwall
+                ? "Multi-wall renders one mockup per wall photo, all with Artwork 1."
+                : "Separate mode renders one mockup per uploaded artwork."}
             </div>
           )}
 
@@ -326,10 +356,10 @@ export function UploadZone({
 
         <button
           onClick={onGenerate}
-          disabled={filledCount === 0 || isGenerating}
+          disabled={blocked}
           className={cn(
             "relative flex flex-1 items-center justify-center overflow-hidden rounded-xl border px-8 font-display text-xl tracking-tight transition-colors",
-            filledCount === 0 || isGenerating
+            blocked
               ? "cursor-not-allowed border-white/10 bg-white/[0.02] text-white/30"
               : "cursor-pointer border-white/15 bg-white/[0.06] text-white hover:border-white/30 hover:bg-white/[0.1]",
           )}
@@ -343,13 +373,20 @@ export function UploadZone({
                 ? `Rendering ${outputs} mockup${outputs > 1 ? "s" : ""}…`
                 : filledCount === 0
                   ? "Add artwork"
-                  : outputs === 1
+                  : missingWall
+                    ? "Add a wall photo"
+                    : outputs === 1
                     ? "Generate Mockup"
                     : `Generate ${outputs} Mockups`}
             </div>
             <div className="font-mono text-[10px] tracking-wider text-white/40">
-              {filledCount} ARTWORK{filledCount === 1 ? "" : "S"} ·{" "}
-              {mode === "combined" ? "COMBINED" : "SEPARATE"} · ~{Math.max(1, outputs) * 10}S
+              {usedArtworks} ARTWORK{usedArtworks === 1 ? "" : "S"} ·{" "}
+              {multiwall
+                ? `${wallCount} WALL${wallCount === 1 ? "" : "S"}`
+                : mode === "combined"
+                  ? "COMBINED"
+                  : "SEPARATE"}{" "}
+              · ~{Math.max(1, outputs) * 10}S
             </div>
           </div>
           {isGenerating && (
