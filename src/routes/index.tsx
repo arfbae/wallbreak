@@ -145,7 +145,7 @@ function MuralStudio() {
       return generate({
         data: {
           artworkDataUrls: mode === "multiwall" ? filledArtworks.slice(0, 1) : filledArtworks,
-          wallDataUrl: mode === "multiwall" ? (filledWalls[0] ?? null) : wall,
+          wallDataUrl: mode === "multiwall" ? null : wall,
           wallDataUrls: mode === "multiwall" ? filledWalls : null,
           variant,
           apiKeys: apiKeyState.keys,
