@@ -13,6 +13,10 @@ export type Mural = {
   error?: string;
   lettering?: LetteringSignal[];
   backdropAdded?: boolean;
+  /** Which uploaded wall this mockup was painted on (multi-wall mode). */
+  wallIndex?: number;
+  /** The wall photo this mockup was painted on (set in the browser). */
+  wallUrl?: string | null;
 };
 
 function letteringLabel(
@@ -223,7 +227,7 @@ export function MuralTriptych({
                   {m.name}
                 </div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/60">
-                  {sceneLabel(m.id)}
+                  {(m as Mural).wallUrl ? "On your wall photo" : sceneLabel(m.id)}
                 </div>
               </div>
             </div>

@@ -128,6 +128,31 @@ const USER_MESSAGE: Record<FailureKind, string> = {
   bad_request: "This request could not be rendered. Try smaller or different images.",
 };
 
+/**
+ * When every option fails, report the reason the user can act on (credits used
+ * up, bad key, busy) rather than whichever failure happened to come last.
+ */
+const FAILURE_PRIORITY: FailureKind[] = [
+  "credits",
+  "auth",
+  "rate_limit",
+  "bad_request",
+  "timeout",
+  "server",
+  "network",
+  "no_image",
+  "model_unavailable",
+];
+
+export function mostTellingFailure(failures: (FailureKind | null | undefined)[]): FailureKind {
+  const seen = new Set(failures.filter(Boolean));
+  return FAILURE_PRIORITY.find((f) => seen.has(f)) ?? "model_unavailable";
+}
+
+export function failureMessage(failure: FailureKind): string {
+  return USER_MESSAGE[failure];
+}
+
 // ---------------------------------------------------------------------------
 // Health registry (per server instance, in memory)
 // ---------------------------------------------------------------------------
@@ -295,10 +320,15 @@ export async function renderImageWithFailover(
   const plan = usable.length > 0 ? usable : [];
 
   if (plan.length === 0) {
+    // Everything is cooling down: say why (e.g. credits used up) instead of a generic line.
+    const reason = mostTellingFailure(resources.map((r) => getHealth(r.id, now()).lastFailure));
     return {
       ok: false,
-      failure: "model_unavailable",
-      message: "No compatible image service is available right now. Please try again shortly.",
+      failure: reason,
+      message:
+        reason === "model_unavailable"
+          ? "No compatible image service is available right now. Please try again shortly."
+          : USER_MESSAGE[reason],
       attempts,
     };
   }
@@ -369,5 +399,6 @@ export async function renderImageWithFailover(
     }
   }
 
-  return { ok: false, failure: lastFailure, message: USER_MESSAGE[lastFailure], attempts };
+  const reason = mostTellingFailure([...attempts.map((a) => a.failure), lastFailure]);
+  return { ok: false, failure: reason, message: USER_MESSAGE[reason], attempts };
 }

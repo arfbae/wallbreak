@@ -70,4 +70,31 @@ describe("generation router", () => {
       renderImageWithFailover({ ...req, artworkDataUrls: [] }, buildResourcePlan(creds)),
     ).rejects.toThrow();
   });
+
+  it("says credits are used up even when a later model was merely unavailable", async () => {
+    const statuses = [402, 402, 402, 404];
+    let i = 0;
+    const fetchImpl = (async () =>
+      new Response("x", { status: statuses[i++] ?? 404 })) as unknown as typeof fetch;
+    const out = await renderImageWithFailover(req, buildResourcePlan([creds[0]!]), {
+      fetchImpl,
+      sleep: noSleep,
+    });
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.failure).toBe("credits");
+  });
+
+  it("keeps saying credits are used up while every option is cooling down", async () => {
+    const fetchImpl = (async () => new Response("x", { status: 402 })) as unknown as typeof fetch;
+    await renderImageWithFailover(req, buildResourcePlan([creds[0]!]), {
+      fetchImpl,
+      sleep: noSleep,
+    });
+    const again = await renderImageWithFailover(req, buildResourcePlan([creds[0]!]), {
+      fetchImpl,
+      sleep: noSleep,
+    });
+    expect(again.ok).toBe(false);
+    if (!again.ok) expect(again.failure).toBe("credits");
+  });
 });

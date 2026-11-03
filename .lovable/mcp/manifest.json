@@ -15,7 +15,7 @@
       {
         "name": "generate_mural_mockups",
         "title": "Generate mural mockups",
-        "description": "Render one photorealistic mural mockup per artwork (up to 3). Optionally composite each mural onto a provided wall photo.",
+        "description": "Render photorealistic mural mockups: one per artwork (separate), all artworks in one mural (combined), or one artwork on 1-3 wall photos (multiwall).",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": false,
@@ -39,6 +39,16 @@
               "format": "uri",
               "description": "Optional public HTTPS URL of a wall photo to use as the background plate for every mockup."
             },
+            "wallUrls": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uri"
+              },
+              "minItems": 1,
+              "maxItems": 3,
+              "description": "1-3 public HTTPS URLs of wall photos for 'multiwall' mode. One mockup per wall."
+            },
             "variant": {
               "type": "string",
               "enum": [
@@ -52,10 +62,11 @@
               "type": "string",
               "enum": [
                 "separate",
-                "combined"
+                "combined",
+                "multiwall"
               ],
               "default": "separate",
-              "description": "'separate' renders one mural per artwork; 'combined' incorporates all artworks into a single mural."
+              "description": "'separate' renders one mural per artwork; 'combined' incorporates all artworks into a single mural; 'multiwall' paints the first artwork on each wall in wallUrls."
             },
             "count": {
               "type": "integer",

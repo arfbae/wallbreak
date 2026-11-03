@@ -8,6 +8,7 @@ import {
   buildIsolationRule,
   needsGeneratedBackdrop,
 } from "./artwork-analysis";
+import { normalizeMuralRequest, type RawMuralRequest } from "./mural-request";
 import { letteringSignal, type LetteringSignal } from "./graffiti-style";
 import {
   analyzeWallGeometry,
@@ -217,73 +218,34 @@ async function generateOne(
   };
 }
 
+/** One render must never take down its siblings: any unexpected throw becomes a failed panel. */
+async function safeGenerate(
+  label: string,
+  sceneId: string,
+  run: () => ReturnType<typeof generateOne>,
+): ReturnType<typeof generateOne> {
+  try {
+    return await run();
+  } catch (err) {
+    logRender(
+      {
+        cid: `safe_${sceneId}`,
+        event: "render-exception",
+        detail: err instanceof Error ? err.message.slice(0, 200) : "unknown error",
+      },
+      "error",
+    );
+    return {
+      id: sceneId as Scene["id"],
+      name: label,
+      imageUrl: null,
+      error: "This mockup couldn't be made. Press Recompose to try again.",
+    };
+  }
+}
+
 export const generateMurals = createServerFn({ method: "POST" })
-  .inputValidator(
-    (input: {
-      artworkDataUrl?: string;
-      artworkDataUrls?: string[];
-      wallDataUrl?: string | null;
-      variant?: "base" | "retry";
-      apiKey?: string | null;
-      apiKeys?: string[] | null;
-      serverFallback?: boolean;
-      mode?: "separate" | "combined";
-      count?: number;
-      keepBackground?: boolean;
-      compositionPlan?: string | null;
-    }) => {
-      const artworkList: string[] = [];
-      if (Array.isArray(input.artworkDataUrls)) artworkList.push(...input.artworkDataUrls);
-      if (typeof input.artworkDataUrl === "string") artworkList.push(input.artworkDataUrl);
-      const artworks = artworkList
-        .filter((a): a is string => typeof a === "string" && a.startsWith("data:image/"))
-        .slice(0, 3);
-      if (artworks.length === 0) {
-        throw new Error("At least one artworkDataUrl is required (data:image/*)");
-      }
-      if (input.wallDataUrl && !input.wallDataUrl.startsWith("data:image/")) {
-        throw new Error("wallDataUrl must be a data:image/* URL");
-      }
-      // Payload guard: keep each image (and the whole request) within a size the
-      // gateway can accept, with a message the UI can show verbatim.
-      const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-      const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
-      const bytesOf = (d: string) => Math.floor(((d.length - d.indexOf(",") - 1) * 3) / 4);
-      let total = 0;
-      for (const img of [...artworks, ...(input.wallDataUrl ? [input.wallDataUrl] : [])]) {
-        const size = bytesOf(img);
-        total += size;
-        if (size > MAX_IMAGE_BYTES) {
-          throw new Error("One of your images is too large. Please use an image under 8 MB.");
-        }
-      }
-      if (total > MAX_TOTAL_BYTES) {
-        throw new Error("Your images are too large in total. Remove one or use smaller files.");
-      }
-      const raw: string[] = [];
-      if (Array.isArray(input.apiKeys)) raw.push(...input.apiKeys);
-      if (typeof input.apiKey === "string") raw.push(input.apiKey);
-      const apiKeys = Array.from(
-        new Set(raw.map((k) => (typeof k === "string" ? k.trim() : "")).filter(Boolean)),
-      );
-      const mode = input.mode === "combined" ? "combined" : "separate";
-      const count = Math.min(3, Math.max(1, Math.round(input.count ?? 1)));
-      return {
-        artworks,
-        wallDataUrl: input.wallDataUrl ?? null,
-        variant: input.variant ?? "base",
-        apiKeys,
-        serverFallback: input.serverFallback !== false,
-        mode,
-        count,
-        keepBackground: input.keepBackground === true,
-        compositionPlan:
-          typeof input.compositionPlan === "string" && input.compositionPlan.trim()
-            ? input.compositionPlan.trim().slice(0, 3000)
-            : null,
-      };
-    },
-  )
+  .inputValidator((input: RawMuralRequest) => normalizeMuralRequest(input))
   .handler(async ({ data }) => {
     const keys: KeyEntry[] = data.apiKeys.map((k, i) => ({
       key: k,
@@ -317,8 +279,21 @@ export const generateMurals = createServerFn({ method: "POST" })
     const meter = async <T extends { keyUsed?: string }>(results: T[]): Promise<T[]> => {
       if (!quotaUserId) return results;
       const used = results.filter((r) => r.keyUsed === "server key").length;
-      const { recordServerKeyUsage } = await import("./gen-guard.server");
-      await recordServerKeyUsage(quotaUserId, used);
+      if (used === 0) return results;
+      try {
+        const { recordServerKeyUsage } = await import("./gen-guard.server");
+        await recordServerKeyUsage(quotaUserId, used);
+      } catch (err) {
+        // Finished mockups are never thrown away because usage logging failed.
+        logRender(
+          {
+            cid: "meter",
+            event: "meter-failed",
+            detail: err instanceof Error ? err.message.slice(0, 200) : "unknown",
+          },
+          "error",
+        );
+      }
       return results;
     };
 
@@ -335,7 +310,7 @@ export const generateMurals = createServerFn({ method: "POST" })
     const analyses = analysisKey
       ? await Promise.all(
           data.artworks.map(async (a, i) => {
-            const result = await analyzeArtworkSource(a, analysisKey);
+            const result = await analyzeArtworkSource(a, analysisKey).catch(() => null);
             logRender(
               {
                 cid: `iso_${i}`,
@@ -356,56 +331,97 @@ export const generateMurals = createServerFn({ method: "POST" })
       idx.map((i) => signals[i]).filter((s): s is LetteringSignal => !!s);
     const backdropFor = (idx: number[]) => idx.some((i) => needsGeneratedBackdrop(analyses[i]));
 
-    // Projection mapping: measure the wall's paintable quad once, then give
-    // every render explicit target coordinates instead of "paint on the wall".
-    let geometry: WallGeometry | null = null;
-    if (data.wallDataUrl && analysisKey) {
-      geometry = await analyzeWallGeometry(data.wallDataUrl, analysisKey);
+    // Projection mapping: measure each wall's paintable quad, then give every
+    // render explicit target coordinates instead of "paint on the wall".
+    const measureWall = async (wallUrl: string, idx: number): Promise<WallGeometry | null> => {
+      if (!analysisKey) return null;
+      const g = await analyzeWallGeometry(wallUrl, analysisKey).catch(() => null);
       logRender(
         {
-          cid: "wall",
+          cid: `wall_${idx}`,
           event: "wall-geometry",
-          detail: geometry
-            ? `${geometry.surface} conf=${geometry.confidence} occluders=${geometry.occluders.length}`
+          detail: g
+            ? `${g.surface} conf=${g.confidence} occluders=${g.occluders.length}`
             : "unavailable",
         },
-        geometry ? "info" : "warn",
+        g ? "info" : "warn",
       );
-    }
-    const wallAspect = data.wallDataUrl ? (dataUrlAspect(data.wallDataUrl) ?? 4 / 3) : 4 / 3;
-    const projectionFor = (arts: string[]) =>
-      data.wallDataUrl
-        ? {
-            geometry,
-            rule: buildProjectionRule(
-              geometry,
-              arts.length === 1 ? (dataUrlAspect(arts[0]!) ?? 1) : 1.618,
-              wallAspect,
+      return g;
+    };
+    const projectionOn = (wallUrl: string, geometry: WallGeometry | null, arts: string[]) => ({
+      geometry,
+      rule: buildProjectionRule(
+        geometry,
+        arts.length === 1 ? (dataUrlAspect(arts[0]!) ?? 1) : 1.618,
+        dataUrlAspect(wallUrl) ?? 4 / 3,
+      ),
+    });
+
+    // One artwork on several walls: every wall is measured and rendered on its
+    // own, so one bad wall photo never costs the others their mockup.
+    if (data.mode === "multiwall") {
+      const artwork = data.artworks[0]!;
+      const rule = buildIsolationRule([analyses[0] ?? null], data.keepBackground);
+      const results = await Promise.all(
+        data.walls.map(async (wallUrl, i) => {
+          const name = `Wall ${i + 1}`;
+          const sceneWithId: Scene = { ...SCENES[0], id: `container-w${i}` as Scene["id"] };
+          const r = await safeGenerate(name, sceneWithId.id, async () =>
+            generateOne(
+              sceneWithId,
+              [artwork],
+              wallUrl,
+              data.variant,
+              keys,
+              undefined,
+              0,
+              rule,
+              projectionOn(wallUrl, await measureWall(wallUrl, i), [artwork]),
             ),
-          }
-        : undefined;
+          );
+          return {
+            ...r,
+            index: i,
+            wallIndex: i,
+            name,
+            lettering: letteringFor([0]),
+            backdropAdded: backdropFor([0]),
+          };
+        }),
+      );
+      return { murals: await meter(results) };
+    }
+
+    const wallDataUrl = data.walls[0] ?? null;
+    const geometry = wallDataUrl ? await measureWall(wallDataUrl, 0) : null;
+    const projectionFor = (arts: string[]) =>
+      wallDataUrl ? projectionOn(wallDataUrl, geometry, arts) : undefined;
 
     if (data.mode === "combined") {
       const results = await Promise.all(
         Array.from({ length: data.count }, (_, i) => {
-          const baseScene = data.wallDataUrl ? SCENES[0] : SCENES[i % SCENES.length];
+          const baseScene = wallDataUrl ? SCENES[0] : SCENES[i % SCENES.length];
           const sceneWithId: Scene = { ...baseScene, id: `${baseScene.id}-${i}` as Scene["id"] };
-          return generateOne(
-            sceneWithId,
-            data.artworks,
-            data.wallDataUrl,
-            data.variant,
-            keys,
-            [data.artworks.length > 1 ? data.compositionPlan : null, VARIATIONS[i]]
-              .filter(Boolean)
-              .join("\n\n"),
-            i,
-            isolationRule,
-            projectionFor(data.artworks),
+          const name = data.count > 1 ? `Mockup ${i + 1}` : "Combined Mural";
+          return safeGenerate(name, sceneWithId.id, () =>
+            generateOne(
+              sceneWithId,
+              data.artworks,
+              wallDataUrl,
+              data.variant,
+              keys,
+              [data.artworks.length > 1 ? data.compositionPlan : null, VARIATIONS[i]]
+                .filter(Boolean)
+                .join("\n\n"),
+              i,
+              isolationRule,
+              projectionFor(data.artworks),
+            ),
           ).then((r) => ({
             ...r,
             index: i,
-            name: data.count > 1 ? `Mockup ${i + 1}` : "Combined Mural",
+            wallIndex: 0,
+            name,
             lettering: letteringFor(data.artworks.map((_, k) => k)),
             backdropAdded: backdropFor(data.artworks.map((_, k) => k)),
           }));
@@ -418,24 +434,28 @@ export const generateMurals = createServerFn({ method: "POST" })
       data.artworks.map((artworkDataUrl, i) => {
         // When a wall photo is provided, every mockup uses Scene A's strict
         // background-lock prompt (Scene B/C rewrite/obstruct the photo).
-        const baseScene = data.wallDataUrl ? SCENES[0] : SCENES[i % SCENES.length];
+        const baseScene = wallDataUrl ? SCENES[0] : SCENES[i % SCENES.length];
         const sceneWithId: Scene = { ...baseScene, id: `${baseScene.id}-${i}` as Scene["id"] };
-        return generateOne(
-          sceneWithId,
-          [artworkDataUrl],
-          data.wallDataUrl,
-          data.variant,
-          keys,
-          undefined,
-          0,
-          // One artwork per render: give it its own isolation rule so the
-          // "Artwork 1" references (backdrop, graffiti) describe this upload.
-          buildIsolationRule([analyses[i] ?? null], data.keepBackground),
-          projectionFor([artworkDataUrl]),
+        const name = `Artwork ${i + 1}`;
+        return safeGenerate(name, sceneWithId.id, () =>
+          generateOne(
+            sceneWithId,
+            [artworkDataUrl],
+            wallDataUrl,
+            data.variant,
+            keys,
+            undefined,
+            0,
+            // One artwork per render: give it its own isolation rule so the
+            // "Artwork 1" references (backdrop, graffiti) describe this upload.
+            buildIsolationRule([analyses[i] ?? null], data.keepBackground),
+            projectionFor([artworkDataUrl]),
+          ),
         ).then((r) => ({
           ...r,
           index: i,
-          name: `Artwork ${i + 1}`,
+          wallIndex: 0,
+          name,
           lettering: letteringFor([i]),
           backdropAdded: backdropFor([i]),
         }));
