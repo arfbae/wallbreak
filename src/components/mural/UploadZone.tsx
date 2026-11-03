@@ -223,7 +223,11 @@ export function UploadZone({
               title={`Artwork ${i + 1}`}
               placeholderTitle={i === 0 ? "Drop artwork" : "+ Add artwork"}
               hint={
-                multiwall ? "painted on every wall below" : i === 0 ? "required · PNG / JPG" : "optional"
+                multiwall
+                  ? "painted on every wall below"
+                  : i === 0
+                    ? "required · PNG / JPG"
+                    : "optional"
               }
               libraryKind="artwork"
             />
@@ -244,7 +248,9 @@ export function UploadZone({
               onClear={() => onWall(i, null)}
               stepLabel={multiwall ? `0${i + 2} · Wall ${i + 1}` : "04 · Wall (optional)"}
               title={multiwall ? `Wall ${i + 1}` : "Wall loaded"}
-              placeholderTitle={multiwall ? (i === 0 ? "Drop wall photo" : "+ Add wall") : "Drop wall image"}
+              placeholderTitle={
+                multiwall ? (i === 0 ? "Drop wall photo" : "+ Add wall") : "Drop wall image"
+              }
               hint={
                 multiwall
                   ? i === 0
@@ -376,8 +382,8 @@ export function UploadZone({
                   : missingWall
                     ? "Add a wall photo"
                     : outputs === 1
-                    ? "Generate Mockup"
-                    : `Generate ${outputs} Mockups`}
+                      ? "Generate Mockup"
+                      : `Generate ${outputs} Mockups`}
             </div>
             <div className="font-mono text-[10px] tracking-wider text-white/40">
               {usedArtworks} ARTWORK{usedArtworks === 1 ? "" : "S"} ·{" "}

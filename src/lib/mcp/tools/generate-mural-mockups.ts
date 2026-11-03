@@ -57,6 +57,7 @@ export default defineTool({
       const r = await fetch(url);
       if (!r.ok) throw new Error(`Failed to fetch ${url}: ${r.status}`);
       const ct = r.headers.get("content-type") ?? "image/png";
+      if (!ct.startsWith("image/")) throw new Error(`${url} is not an image (${ct}).`);
       const buf = new Uint8Array(await r.arrayBuffer());
       let bin = "";
       for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
