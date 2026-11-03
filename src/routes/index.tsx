@@ -23,6 +23,7 @@ import { LibraryPanel } from "@/components/mural/LibraryPanel";
 import { AuthPill } from "@/components/mural/AuthPill";
 import { saveLibraryItem, migrateLocalToCloudIfNeeded } from "@/lib/library";
 import { useAuth } from "@/hooks/use-auth";
+import { expectedMockupCount, type MuralMode } from "@/lib/mural-request";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -49,7 +50,8 @@ export const Route = createFileRoute("/")({
 function MuralStudio() {
   const generate = useServerFn(generateMurals);
   const [artworks, setArtworks] = useState<(string | null)[]>([null, null, null]);
-  const [wall, setWall] = useState<string | null>(null);
+  const [walls, setWalls] = useState<(string | null)[]>([null, null, null]);
+  const wall = walls[0] ?? null;
   const [murals, setMurals] = useState<Mural[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [revealOpen, setRevealOpen] = useState(false);
@@ -58,7 +60,7 @@ function MuralStudio() {
 
   const [retryNonce, setRetryNonce] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
-  const [mode, setMode] = useState<"separate" | "combined">("separate");
+  const [mode, setMode] = useState<MuralMode>("separate");
   const [count, setCount] = useState<1 | 2 | 3>(1);
   const [keepBackground, setKeepBackground] = useState(false);
   const [plan, setPlan] = useState<CompositionPlan | null>(null);
@@ -107,22 +109,44 @@ function MuralStudio() {
     setSelected(null);
   };
 
-  const setWallAndSave = (dataUrl: string) => {
-    setWall(dataUrl);
+  const setWallAt = (index: number, value: string | null) => {
+    setWalls((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
     setMurals(null);
     setSelected(null);
-    void saveLibraryItem("wall", dataUrl).catch(() => {});
+    if (value) void saveLibraryItem("wall", value).catch(() => {});
+  };
+
+  // From the Library panel: in Multi-wall, fill the next empty wall box.
+  const loadWallFromLibrary = (dataUrl: string) => {
+    const emptyIdx = walls.findIndex((v) => !v);
+    setWallAt(mode === "multiwall" && emptyIdx !== -1 ? emptyIdx : 0, dataUrl);
+  };
+
+  const changeMode = (next: MuralMode) => {
+    setMode(next);
+    setMurals(null);
+    setSelected(null);
   };
 
   const filledArtworks = artworks.filter((a): a is string => Boolean(a));
+  const filledWalls = walls.filter((w): w is string => Boolean(w));
+  const expected = expectedMockupCount(mode, filledArtworks.length, filledWalls.length, count);
 
   const mutation = useMutation({
     mutationFn: async (variant: "base" | "retry") => {
-      if (filledArtworks.length === 0) throw new Error("no artwork");
+      if (filledArtworks.length === 0) throw new Error("Add an artwork before rendering.");
+      if (mode === "multiwall" && filledWalls.length === 0) {
+        throw new Error("Add at least one wall photo to put your artwork on several walls.");
+      }
       return generate({
         data: {
-          artworkDataUrls: filledArtworks,
-          wallDataUrl: wall,
+          artworkDataUrls: mode === "multiwall" ? filledArtworks.slice(0, 1) : filledArtworks,
+          wallDataUrl: mode === "multiwall" ? (filledWalls[0] ?? null) : wall,
+          wallDataUrls: mode === "multiwall" ? filledWalls : null,
           variant,
           apiKeys: apiKeyState.keys,
           serverFallback: apiKeyState.serverFallback,
@@ -135,6 +159,11 @@ function MuralStudio() {
     },
 
     onSuccess: (data, variant) => {
+      if (!data?.murals?.length) {
+        setMurals(null);
+        toast.error("No mockups came back. Please try again.");
+        return;
+      }
       setMurals(data.murals);
       if (variant === "retry") setRetryNonce((n) => n + 1);
       const failed = data.murals.filter((m) => !m.imageUrl);
@@ -151,7 +180,12 @@ function MuralStudio() {
       }
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Render failed");
+      const msg = err instanceof Error ? err.message : "";
+      toast.error(
+        /fetch|network|load failed/i.test(msg)
+          ? "Couldn't reach the render service. Check your connection and try again."
+          : msg || "Render failed. Please try again.",
+      );
     },
   });
 
@@ -187,13 +221,13 @@ function MuralStudio() {
         <section>
           <UploadZone
             artworkUrls={artworks}
-            wallUrl={wall}
+            wallUrls={walls}
             onArtwork={setArtworkAt}
-            onWall={setWallAndSave}
+            onWall={setWallAt}
             onGenerate={() => mutation.mutate("base")}
             isGenerating={mutation.isPending}
             mode={mode}
-            onModeChange={setMode}
+            onModeChange={changeMode}
             count={count}
             onCountChange={setCount}
             keepBackground={keepBackground}
@@ -219,7 +253,7 @@ function MuralStudio() {
             currentArtworks={artworks}
             currentWall={wall}
             onLoadArtwork={loadArtworkFromLibrary}
-            onLoadWall={setWallAndSave}
+            onLoadWall={loadWallFromLibrary}
           />
         </section>
 
@@ -242,7 +276,7 @@ function MuralStudio() {
             onSelect={setSelected}
             retryNonce={retryNonce}
             showDebug={showDebug}
-            count={((mode === "combined" ? count : filledArtworks.length) || 1) as 1 | 2 | 3}
+            count={(expected || 1) as 1 | 2 | 3}
           />
         </section>
 
@@ -289,7 +323,7 @@ function MuralStudio() {
         onOpenChange={setProposalOpen}
         muralImageUrl={selectedMural?.imageUrl ?? null}
         sceneName={selectedMural?.name ?? null}
-        wallImageUrl={wall}
+        wallImageUrl={selectedMural ? (walls[selectedMural.wallIndex ?? 0] ?? wall) : wall}
         artworkImageUrls={filledArtworks}
       />
     </main>
