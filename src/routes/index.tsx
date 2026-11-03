@@ -142,7 +142,10 @@ function MuralStudio() {
       if (mode === "multiwall" && filledWalls.length === 0) {
         throw new Error("Add at least one wall photo to put your artwork on several walls.");
       }
-      return generate({
+      const runMode = mode;
+      const wallSlots = walls.flatMap((w, i) => (w ? [i] : []));
+      const artworkSlots = artworks.flatMap((a, i) => (a ? [i] : []));
+      const res = await generate({
         data: {
           artworkDataUrls: mode === "multiwall" ? filledArtworks.slice(0, 1) : filledArtworks,
           wallDataUrl: mode === "multiwall" ? null : wall,
@@ -156,6 +159,22 @@ function MuralStudio() {
           compositionPlan: mode === "combined" && usePlan && plan ? plan.directive : null,
         },
       });
+      // Name each mockup after the box it came from (empty boxes are skipped
+      // on the way to the server) and remember which wall photo it used.
+      const murals: Mural[] = (res?.murals ?? []).map((m) => {
+        const idx = (m as { index?: number }).index ?? 0;
+        const wallIdx = m.wallIndex ?? 0;
+        if (runMode === "multiwall") {
+          const slot = wallSlots[wallIdx] ?? wallIdx;
+          return { ...m, name: `Wall ${slot + 1}`, wallUrl: walls[slot] ?? null };
+        }
+        if (runMode === "separate") {
+          const slot = artworkSlots[idx] ?? idx;
+          return { ...m, name: `Artwork ${slot + 1}`, wallUrl: wall };
+        }
+        return { ...m, wallUrl: wall };
+      });
+      return { murals };
     },
 
     onSuccess: (data, variant) => {
@@ -323,7 +342,7 @@ function MuralStudio() {
         onOpenChange={setProposalOpen}
         muralImageUrl={selectedMural?.imageUrl ?? null}
         sceneName={selectedMural?.name ?? null}
-        wallImageUrl={selectedMural ? (walls[selectedMural.wallIndex ?? 0] ?? wall) : wall}
+        wallImageUrl={selectedMural?.wallUrl ?? wall}
         artworkImageUrls={filledArtworks}
       />
     </main>

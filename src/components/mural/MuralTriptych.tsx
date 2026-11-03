@@ -15,6 +15,8 @@ export type Mural = {
   backdropAdded?: boolean;
   /** Which uploaded wall this mockup was painted on (multi-wall mode). */
   wallIndex?: number;
+  /** The wall photo this mockup was painted on (set in the browser). */
+  wallUrl?: string | null;
 };
 
 function letteringLabel(
