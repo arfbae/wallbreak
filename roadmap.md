@@ -2,6 +2,10 @@
 
 Working through the audit findings one at a time.
 
+## One artwork on several walls
+
+- [x] "Multi-wall" mode: one artwork on 1–3 wall photos, one mockup per wall, each wall measured separately; per-panel failure isolation; clear messages for missing wall/artwork, bad or oversized images and used-up credits (75 tests). Browser-checked up to the render service; a finished real render is pending because AI credits are used up.
+
 ## Graffiti reference integration
 
 - [x] Integrate supplied graffiti taxonomy into existing source analysis, mural prompts and combined composition planning; verified style preservation, uncertain lettering and background choices with 12 regression tests (56 total passing). Real-render check with an actual graffiti photo still pending.
@@ -17,8 +21,8 @@ Working through the audit findings one at a time.
 - [x] Meter the server AI key: signed-in only + 30 renders / rolling 24h quota (`generation_usage` table, `gen-guard.server.ts`)
 - [ ] Quote / cost calculator (sq m × rate, prep, travel) feeding the PDF proposal
 - [x] Per-route SEO metadata (`/`, `/auth`, `/view`)
-- [ ] Input hardening: cap uploaded image size before it hits the server function
-- [ ] Friendly error surfaces for gateway 402/403/429
+- [x] Input hardening: cap uploaded image size before it hits the server function
+- [x] Friendly error surfaces for gateway 402/403/429
 
 ## Phase 2 — polish
 
