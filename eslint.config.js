@@ -14,6 +14,10 @@ export default tseslint.config(
       // Auto-generated integration files — must not be hand-edited.
       "src/integrations/supabase/previewAuthStorage.ts",
       "src/routeTree.gen.ts",
+      // MCP discovery routes are re-synced by the platform and reformatted on each sync.
+      "src/routes/[[].mcp[]]/**",
+      "src/routes/[[].well-known[]]/**",
+      "src/routes/mcp.ts",
     ],
   },
   {
