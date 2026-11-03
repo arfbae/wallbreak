@@ -227,7 +227,7 @@ export function MuralTriptych({
                   {m.name}
                 </div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/60">
-                  {sceneLabel(m.id)}
+                  {(m as Mural).wallUrl ? "On your wall photo" : sceneLabel(m.id)}
                 </div>
               </div>
             </div>
