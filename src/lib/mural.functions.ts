@@ -1,6 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { assertPromptIntegrity, buildMuralPrompt } from "./mural-prompt";
-import { buildResourcePlan, renderImageWithFailover } from "./generation-router";
+import {
+  buildResourcePlan,
+  detectKeyProvider,
+  renderImageWithFailover,
+  type ProviderId,
+} from "./generation-router";
 import { classifyRenderedMedium } from "./mural-classifier";
 import { hashPrompt, logRender, newCorrelationId } from "./render-log";
 import {
@@ -66,7 +71,7 @@ const SCENES: Scene[] = [
   },
 ];
 
-type KeyEntry = { key: string; label: string };
+type KeyEntry = { key: string; label: string; provider: ProviderId };
 
 type RenderCtx = {
   cid: string;
@@ -247,14 +252,29 @@ async function safeGenerate(
 export const generateMurals = createServerFn({ method: "POST" })
   .inputValidator((input: RawMuralRequest) => normalizeMuralRequest(input))
   .handler(async ({ data }) => {
-    const keys: KeyEntry[] = data.apiKeys.map((k, i) => ({
-      key: k,
-      label: `user key ${i + 1}`,
-    }));
+    // Keys pasted in the browser, each sent to the service it belongs to.
+    // Keys for services that can't make wall mockups (e.g. Cloudinary) are skipped.
+    const keys: KeyEntry[] = data.apiKeys.flatMap((k, i) => {
+      const provider = detectKeyProvider(k);
+      return provider === "unsupported" ? [] : [{ key: k, label: `user key ${i + 1}`, provider }];
+    });
 
-    // Server key is a metered resource: signed-in users only, rolling 24h quota.
+    // Keys saved in the app, tried in this order after the user's own keys.
+    const serverKeys: KeyEntry[] = (
+      [
+        ["LOVABLE_API_KEY", "lovable", "server key"],
+        ["GOOGLE_API_KEY", "google", "server Google key"],
+        ["FAL_KEY", "fal", "server fal key"],
+        ["HF_TOKEN", "huggingface", "server Hugging Face key"],
+      ] as const
+    ).flatMap(([env, provider, label]) => {
+      const key = process.env[env];
+      return key ? [{ key, label, provider }] : [];
+    });
+
+    // Server keys are a metered resource: signed-in users only, rolling 24h quota.
     let quotaUserId: string | null = null;
-    if (data.serverFallback && process.env.LOVABLE_API_KEY) {
+    if (data.serverFallback && serverKeys.length > 0) {
       const { resolveCaller, checkServerKeyQuota, SERVER_KEY_DAILY_LIMIT } =
         await import("./gen-guard.server");
       const { userId } = await resolveCaller();
@@ -262,7 +282,7 @@ export const generateMurals = createServerFn({ method: "POST" })
         const quota = await checkServerKeyQuota(userId);
         if (quota.allowed) {
           quotaUserId = userId;
-          keys.push({ key: process.env.LOVABLE_API_KEY, label: "server key" });
+          keys.push(...serverKeys);
         } else if (keys.length === 0) {
           throw new Error(
             `Daily limit reached (${SERVER_KEY_DAILY_LIMIT} renders / 24h on the shared key). Add your own API key to keep going, or try again later.`,
@@ -278,7 +298,7 @@ export const generateMurals = createServerFn({ method: "POST" })
 
     const meter = async <T extends { keyUsed?: string }>(results: T[]): Promise<T[]> => {
       if (!quotaUserId) return results;
-      const used = results.filter((r) => r.keyUsed === "server key").length;
+      const used = results.filter((r) => r.keyUsed?.startsWith("server")).length;
       if (used === 0) return results;
       try {
         const { recordServerKeyUsage } = await import("./gen-guard.server");
@@ -306,7 +326,9 @@ export const generateMurals = createServerFn({ method: "POST" })
     // Pre-render pass: work out what part of every upload is actually the
     // artwork (photos of canvases, screenshots with UI chrome, artwork inside a
     // wider scene) so the renderer paints the subject and not its surroundings.
-    const analysisKey = keys[0]?.key;
+    // Analysis, wall measurement and after-render checks run on the built-in
+    // AI service, so they need a key for that service specifically.
+    const analysisKey = keys.find((k) => k.provider === "lovable")?.key;
     const analyses = analysisKey
       ? await Promise.all(
           data.artworks.map(async (a, i) => {
