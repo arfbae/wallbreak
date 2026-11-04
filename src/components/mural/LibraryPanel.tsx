@@ -79,6 +79,12 @@ export function LibraryPanel({ currentArtworks, currentWall, onLoadArtwork, onLo
   };
 
   const [preview, setPreview] = useState<LibraryItem | null>(null);
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPreview(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview]);
 
   const hasArtwork = currentArtworks.some(Boolean);
   const artworks = items.filter((i) => i.kind === "artwork");
