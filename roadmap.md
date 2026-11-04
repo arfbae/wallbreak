@@ -2,6 +2,10 @@
 
 Working through the audit findings one at a time.
 
+## Use the user's own AI keys
+
+- [ ] Store the provided keys as server secrets; route renders to Google Gemini and fal.ai (wall + artwork capable) when built-in credits run out; explain in the key box which key types work and where they're stored.
+
 ## One artwork on several walls
 
 - [x] "Multi-wall" mode: one artwork on 1–3 wall photos, one mockup per wall, each wall measured separately; per-panel failure isolation; clear messages for missing wall/artwork, bad or oversized images and used-up credits (75 tests). Browser-checked up to the render service; a finished real render is pending because AI credits are used up.
