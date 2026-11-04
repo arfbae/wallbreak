@@ -31,15 +31,66 @@ export interface MuralRequest {
   wallDataUrl: string | null;
 }
 
+/**
+ * Image services that can take the COMPLETE mural request (wall photo +
+ * artwork images + instructions) and return an edited image. Text-only or
+ * single-image services (Recraft, Cloudinary) are deliberately not here.
+ */
+export type ProviderId = "lovable" | "google" | "fal" | "huggingface";
+
+export const PROVIDER_LABEL: Record<ProviderId, string> = {
+  lovable: "Built-in AI",
+  google: "Google Gemini",
+  fal: "fal.ai",
+  huggingface: "Hugging Face",
+};
+
+/** Models per provider, best first. Each accepts several input images. */
+export const PROVIDER_MODELS: Record<ProviderId, readonly string[]> = {
+  lovable: [
+    "google/gemini-3.1-flash-image",
+    "google/gemini-3-pro-image",
+    "google/gemini-2.5-flash-image",
+    "google/gemini-3.1-flash-lite-image",
+  ],
+  google: ["gemini-3.1-flash-image", "gemini-3-pro-image", "gemini-2.5-flash-image"],
+  fal: ["fal-ai/nano-banana-pro/edit", "fal-ai/nano-banana/edit"],
+  // Hugging Face Inference Providers, routed to fal's multi-image Qwen editor.
+  huggingface: ["fal-ai/qwen-image-edit-2509"],
+};
+
+/** What to tell the user when a provider's account has no money on it. */
+const PROVIDER_CREDITS_HINT: Record<ProviderId, string> = {
+  lovable: "credits used up",
+  google: "no image allowance — turn on billing in Google AI Studio",
+  fal: "account needs a top-up",
+  huggingface: "needs pre-paid credits",
+};
+
+/**
+ * Work out which service a pasted key belongs to from its shape. Unknown
+ * shapes are assumed to be Lovable AI keys (the original behaviour).
+ */
+export function detectKeyProvider(key: string): ProviderId | "unsupported" {
+  const k = key.trim();
+  if (/^AIza[\w-]{20,}$/.test(k)) return "google";
+  if (/^hf_\w{10,}$/.test(k)) return "huggingface";
+  if (/^fal_/.test(k) || /^[0-9a-f-]{36}:[0-9a-f]{32}$/i.test(k)) return "fal";
+  if (/^cloudinary:\/\//i.test(k) || /^CLOUDINARY_URL=/i.test(k)) return "unsupported";
+  return "lovable";
+}
+
 export interface Credential {
   key: string;
   /** Safe, non-secret label for telemetry — never the key itself. */
   label: string;
+  /** Which service the key belongs to. Defaults to the built-in AI service. */
+  provider?: ProviderId;
 }
 
 export interface Resource {
   id: string;
-  provider: string;
+  provider: ProviderId;
   model: string;
   credential: Credential;
 }
@@ -85,12 +136,7 @@ export type RenderOutcome =
  * text + image input on the gateway chat-completions endpoint, so the complete
  * mural request (wall + artwork + instructions) survives a model change.
  */
-export const MODEL_CASCADE = [
-  "google/gemini-3.1-flash-image",
-  "google/gemini-3-pro-image",
-  "google/gemini-2.5-flash-image",
-  "google/gemini-3.1-flash-lite-image",
-] as const;
+export const MODEL_CASCADE = PROVIDER_MODELS.lovable;
 
 const COOLDOWN_MS: Record<FailureKind, number> = {
   rate_limit: 60_000,
@@ -216,7 +262,18 @@ export function healthSnapshot(): Record<string, HealthRecord> {
 // Failure classification
 // ---------------------------------------------------------------------------
 
+const OUT_OF_MONEY =
+  /exhausted balance|locked|top_?up|pre-?paid|insufficient (credit|balance|funds)|billing|purchase|limit: 0|free_tier|payment required/i;
+
 export function classifyStatus(status: number, body = ""): FailureKind {
+  // Providers report an empty account in different ways (402, 403 "locked",
+  // 429 "limit: 0"). All of them mean the same thing to the user.
+  if ((status === 402 || status === 403 || status === 429) && OUT_OF_MONEY.test(body)) {
+    return "credits";
+  }
+  if (status === 400 && /api key not valid|api_key_invalid|invalid api key/i.test(body)) {
+    return "auth";
+  }
   if (status === 429) return "rate_limit";
   if (status === 401) return "auth";
   if (status === 403) return "auth";
@@ -241,19 +298,21 @@ export function classifyStatus(status: number, body = ""): FailureKind {
  * Primary model across all credentials first, then the alternate models — so a
  * bad credential fails over before the whole model cascade is burned.
  */
-export function buildResourcePlan(
-  credentials: Credential[],
-  models: readonly string[] = MODEL_CASCADE,
-): Resource[] {
+export function buildResourcePlan(credentials: Credential[], models?: readonly string[]): Resource[] {
+  // Round-robin by model depth: every credential's best model first (in the
+  // caller's order), then every credential's second model, and so on — so an
+  // empty account fails over to the next service before burning its cascade.
   const plan: Resource[] = [];
-  for (const model of models) {
+  const depth = Math.max(
+    0,
+    ...credentials.map((c) => (models ?? PROVIDER_MODELS[c.provider ?? "lovable"]).length),
+  );
+  for (let d = 0; d < depth; d++) {
     for (const credential of credentials) {
-      plan.push({
-        id: `google:${model}:${credential.label}`,
-        provider: "google",
-        model,
-        credential,
-      });
+      const provider = credential.provider ?? "lovable";
+      const model = (models ?? PROVIDER_MODELS[provider])[d];
+      if (!model) continue;
+      plan.push({ id: `${provider}:${model}:${credential.label}`, provider, model, credential });
     }
   }
   return plan;
@@ -272,6 +331,94 @@ export interface RouterDeps {
   timeoutMs?: number;
   /** Bounded retries for transient failures (timeout / 5xx / network). */
   maxTransientRetries?: number;
+}
+
+function splitDataUrl(url: string): { mimeType: string; data: string } {
+  const m = /^data:([^;,]+)?(?:;base64)?,(.*)$/s.exec(url);
+  return { mimeType: m?.[1] || "image/png", data: m?.[2] ?? "" };
+}
+
+/** Images in the order the mural prompt describes them: artwork(s) first, wall last. */
+function orderedImages(request: MuralRequest): string[] {
+  return [...request.artworkDataUrls, ...(request.wallDataUrl ? [request.wallDataUrl] : [])];
+}
+
+/**
+ * Build the provider-specific HTTP call. Every provider receives the complete
+ * mural request: the full prompt plus every artwork image and the wall photo.
+ */
+export function buildProviderRequest(
+  resource: Resource,
+  request: MuralRequest,
+): { url: string; init: RequestInit } {
+  const key = resource.credential.key;
+  const json = { "Content-Type": "application/json" };
+  switch (resource.provider) {
+    case "google":
+      return {
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${resource.model}:generateContent`,
+        init: {
+          method: "POST",
+          headers: { ...json, "x-goog-api-key": key },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: request.prompt },
+                  ...orderedImages(request).map((u) => ({ inlineData: splitDataUrl(u) })),
+                ],
+              },
+            ],
+            generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
+          }),
+        },
+      };
+    case "fal":
+    case "huggingface": {
+      const body = JSON.stringify({
+        prompt: request.prompt,
+        image_urls: orderedImages(request),
+        num_images: 1,
+        output_format: "png",
+        sync_mode: true,
+      });
+      return resource.provider === "fal"
+        ? {
+            url: `https://fal.run/${resource.model}`,
+            init: { method: "POST", headers: { ...json, Authorization: `Key ${key}` }, body },
+          }
+        : {
+            url: `https://router.huggingface.co/fal-ai/${resource.model}`,
+            init: { method: "POST", headers: { ...json, Authorization: `Bearer ${key}` }, body },
+          };
+    }
+    default:
+      return {
+        url: "https://ai.gateway.lovable.dev/v1/chat/completions",
+        init: {
+          method: "POST",
+          headers: { ...json, Authorization: `Bearer ${key}` },
+          body: buildBody(request, resource.model),
+        },
+      };
+  }
+}
+
+/** Pull the finished image out of each provider's response shape. */
+export function extractImage(provider: ProviderId, data: unknown): string | null {
+  const d = data as Record<string, any> | null;
+  if (!d) return null;
+  if (provider === "google") {
+    const parts: any[] = d.candidates?.[0]?.content?.parts ?? [];
+    const img = parts.find((p) => p?.inlineData?.data || p?.inline_data?.data);
+    const inline = img?.inlineData ?? img?.inline_data;
+    return inline ? `data:${inline.mimeType ?? inline.mime_type ?? "image/png"};base64,${inline.data}` : null;
+  }
+  if (provider === "fal" || provider === "huggingface") {
+    const url = d.images?.[0]?.url ?? d.image?.url;
+    return typeof url === "string" && url ? url : null;
+  }
+  return d.choices?.[0]?.message?.images?.[0]?.image_url?.url ?? null;
 }
 
 function buildBody(request: MuralRequest, model: string): string {
@@ -342,23 +489,19 @@ export async function renderImageWithFailover(
       let imageUrl: string | null = null;
 
       try {
-        const res = await doFetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${resource.credential.key}`,
-            "Content-Type": "application/json",
-          },
-          body: buildBody(request, resource.model),
+        const { url, init } = buildProviderRequest(resource, request);
+        const res = await doFetch(url, {
+          ...init,
           ...(deps.timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
         });
         if (!res.ok) {
           const text = await res.text().catch(() => "");
           failure = classifyStatus(res.status, text);
         } else {
-          const data = (await res.json()) as {
-            choices?: Array<{ message?: { images?: Array<{ image_url?: { url?: string } }> } }>;
-          };
-          imageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url ?? null;
+          imageUrl = extractImage(resource.provider, await res.json());
+          if (imageUrl && /^https?:/i.test(imageUrl)) {
+            imageUrl = await toDataUrl(imageUrl, doFetch);
+          }
           if (!imageUrl) failure = "no_image";
         }
       } catch (err) {
@@ -395,10 +538,70 @@ export async function renderImageWithFailover(
       }
 
       markFailure(resource.id, lastFailure, now());
+      if (lastFailure === "auth" || lastFailure === "credits") {
+        // A rejected or empty account fails for every model on it — skip them.
+        for (const other of plan) {
+          if (
+            other.id !== resource.id &&
+            other.provider === resource.provider &&
+            other.credential.label === resource.credential.label
+          ) {
+            markFailure(other.id, lastFailure, now());
+          }
+        }
+      }
       break; // fail over to the next compatible resource
     }
   }
 
   const reason = mostTellingFailure([...attempts.map((a) => a.failure), lastFailure]);
-  return { ok: false, failure: reason, message: USER_MESSAGE[reason], attempts };
+  return { ok: false, failure: reason, message: describeFailure(reason, attempts), attempts };
+}
+
+const SHORT_REASON: Record<FailureKind, string> = {
+  rate_limit: "busy",
+  auth: "key rejected",
+  credits: "credits used up",
+  model_unavailable: "model unavailable",
+  timeout: "too slow",
+  server: "service down",
+  network: "unreachable",
+  no_image: "no picture returned",
+  bad_request: "request refused",
+};
+
+/**
+ * Plain-English failure, naming each service tried and why, so the user knows
+ * which account to top up or which key to fix. Never includes keys or codes.
+ */
+export function describeFailure(reason: FailureKind, attempts: AttemptLog[]): string {
+  const byProvider = new Map<ProviderId, FailureKind[]>();
+  for (const a of attempts) {
+    const p = a.provider as ProviderId;
+    if (!a.failure) continue;
+    byProvider.set(p, [...(byProvider.get(p) ?? []), a.failure]);
+  }
+  if (byProvider.size <= 1) return USER_MESSAGE[reason];
+  const parts = [...byProvider.entries()].map(([p, fs]) => {
+    const f = mostTellingFailure(fs);
+    const why = f === "credits" ? (PROVIDER_CREDITS_HINT[p] ?? "credits used up") : SHORT_REASON[f];
+    return `${PROVIDER_LABEL[p] ?? p}: ${why}`;
+  });
+  return `No image service could make this mockup. ${parts.join(" · ")}.`;
+}
+
+async function toDataUrl(url: string, doFetch: typeof fetch): Promise<string | null> {
+  try {
+    const r = await doFetch(url);
+    if (!r.ok) return null;
+    const type = r.headers.get("content-type") ?? "image/png";
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    return `data:${type};base64,${btoa(bin)}`;
+  } catch {
+    return null;
+  }
 }
