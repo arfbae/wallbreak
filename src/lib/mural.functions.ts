@@ -163,7 +163,9 @@ async function generateOne(
     return { id: scene.id, name: scene.name, imageUrl: null, error: outcome.message };
   }
 
-  const verdict = await classifyRenderedMedium(outcome.imageUrl, outcome.resource.credential.key);
+  // After-render checks run on the built-in AI service; skip them when no key for it exists.
+  const checkKey = keys.find((k) => k.provider === "lovable")?.key ?? null;
+  const verdict = checkKey ? await classifyRenderedMedium(outcome.imageUrl, checkKey) : null;
   logRender(
     {
       ...ctx,
@@ -177,12 +179,8 @@ async function generateOne(
   );
   // Projection check: a render with paint off the wall plane is re-rendered
   // once with the measured bounds and the reported faults spelled out.
-  if (wallDataUrl && projection) {
-    const placement = await verifyPlacement(
-      outcome.imageUrl,
-      projection.geometry,
-      outcome.resource.credential.key,
-    );
+  if (wallDataUrl && projection && checkKey) {
+    const placement = await verifyPlacement(outcome.imageUrl, projection.geometry, checkKey);
     logRender(
       {
         ...ctx,
