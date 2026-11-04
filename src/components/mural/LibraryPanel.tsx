@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Cloud, Trash2, Plus, Share2, Check } from "lucide-react";
+import { Cloud, Trash2, Plus, Share2, Check, Download, X } from "lucide-react";
 import {
   listLibrary,
   saveLibraryItem,
@@ -78,9 +78,18 @@ export function LibraryPanel({ currentArtworks, currentWall, onLoadArtwork, onLo
     }
   };
 
+  const [preview, setPreview] = useState<LibraryItem | null>(null);
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPreview(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview]);
+
   const hasArtwork = currentArtworks.some(Boolean);
   const artworks = items.filter((i) => i.kind === "artwork");
   const walls = items.filter((i) => i.kind === "wall");
+  const mockups = items.filter((i) => i.kind === "mockup");
 
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
@@ -167,17 +176,72 @@ export function LibraryPanel({ currentArtworks, currentWall, onLoadArtwork, onLo
             onShare={isCloud ? share : undefined}
             sharedId={sharedId}
           />
+          <Row
+            label="Mockups & outlines"
+            items={mockups}
+            onLoad={(_, item) => setPreview(item)}
+            onRemove={remove}
+            onShare={isCloud ? share : undefined}
+            sharedId={sharedId}
+            emptyText="Use the bookmark button on a finished mockup to keep it here."
+          />
 
           <p className="font-mono text-[9px] uppercase tracking-wider text-white/30">
             {isCloud
               ? "Synced to your cloud library. Share links are signed, time-limited, and viewable by anyone with the URL until they expire."
-              : "Stored privately in this browser (IndexedDB). Sign in to sync and generate shareable links."}
+              : "Stored privately in this browser. Sign in to sync and generate shareable links."}
           </p>
+        </div>
+      )}
+
+      {preview && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={preview.name}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+          onClick={() => setPreview(null)}
+        >
+          <div
+            className="flex max-h-full w-full max-w-4xl flex-col gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={preview.dataUrl}
+              alt={preview.name}
+              className="max-h-[75vh] w-full rounded-lg object-contain"
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="truncate text-sm text-white/70">{preview.name}</span>
+              <div className="flex gap-2">
+                <a
+                  href={preview.dataUrl}
+                  download={`${preview.name.replace(/[^\w-]+/g, "-") || "mockup"}.${
+                    preview.dataUrl.startsWith("data:image/svg") ? "svg" : "png"
+                  }`}
+                  className="flex items-center gap-1.5 rounded-md border border-white/20 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-white hover:bg-white/5"
+                >
+                  <Download className="h-3 w-3" /> Download
+                </a>
+                <button
+                  onClick={() => setPreview(null)}
+                  className="flex items-center gap-1.5 rounded-md border border-white/20 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-white hover:bg-white/5"
+                >
+                  <X className="h-3 w-3" /> Close
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </section>
   );
 }
+
+// Hover-only on wide screens; always visible on touch-sized screens where
+// there is no hover.
+const CORNER_BTN =
+  "absolute top-1 rounded bg-black/70 p-1 text-white/70 hover:text-white md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100";
 
 function Row({
   label,
@@ -186,13 +250,15 @@ function Row({
   onRemove,
   onShare,
   sharedId,
+  emptyText = "Nothing saved yet.",
 }: {
   label: string;
   items: LibraryItem[];
-  onLoad: (dataUrl: string) => void;
+  onLoad: (dataUrl: string, item: LibraryItem) => void;
   onRemove: (id: string) => void;
   onShare?: (item: LibraryItem) => void;
   sharedId?: string | null;
+  emptyText?: string;
 }) {
   return (
     <div>
@@ -201,14 +267,15 @@ function Row({
       </div>
       {items.length === 0 ? (
         <div className="rounded-lg border border-dashed border-white/10 p-3 text-xs text-white/30">
-          Nothing saved yet.
+          {emptyText}
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
           {items.map((it) => (
             <div key={it.id} className="group relative">
               <button
-                onClick={() => onLoad(it.dataUrl)}
+                onClick={() => onLoad(it.dataUrl, it)}
+                title={it.name}
                 className="block h-20 w-20 overflow-hidden rounded-lg ring-1 ring-white/10 transition-all hover:ring-[var(--studio-accent)]"
               >
                 <img src={it.dataUrl} alt={it.name} className="h-full w-full object-cover" />
@@ -216,7 +283,7 @@ function Row({
               {onShare && it.storagePath && (
                 <button
                   onClick={() => onShare(it)}
-                  className="absolute left-1 top-1 hidden rounded bg-black/70 p-1 text-white/70 hover:text-[var(--studio-accent)] group-hover:block"
+                  className={cn(CORNER_BTN, "left-1 hover:text-[var(--studio-accent)]")}
                   aria-label="Copy share link"
                   title="Copy shareable link"
                 >
@@ -229,8 +296,9 @@ function Row({
               )}
               <button
                 onClick={() => onRemove(it.id)}
-                className="absolute right-1 top-1 hidden rounded bg-black/70 p-1 text-white/70 hover:text-white group-hover:block"
+                className={cn(CORNER_BTN, "right-1")}
                 aria-label="Delete"
+                title="Delete"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
