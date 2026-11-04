@@ -4,7 +4,7 @@ Working through the audit findings one at a time.
 
 ## Use the user's own AI keys
 
-- [ ] Store the provided keys as server secrets; route renders to Google Gemini and fal.ai (wall + artwork capable) when built-in credits run out; explain in the key box which key types work and where they're stored.
+- [ ] Store the provided keys as server secrets; route renders to Google Gemini and fal.ai (wall + artwork capable) when built-in credits run out; explain in the key box which key types work and where they're stored. Also try Hugging Face as an image service; explain Cloudinary only stores pictures.
 
 ## One artwork on several walls
 
