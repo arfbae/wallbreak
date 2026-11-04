@@ -199,7 +199,7 @@ export function LibraryPanel({ currentArtworks, currentWall, onLoadArtwork, onLo
           role="dialog"
           aria-modal="true"
           aria-label={preview.name}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
           onClick={() => setPreview(null)}
         >
           <div
