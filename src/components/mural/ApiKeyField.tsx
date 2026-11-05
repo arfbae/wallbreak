@@ -146,7 +146,9 @@ function PasteImport({
   const find = () => {
     const found = extractKeys(text);
     setMatches(found);
-    setPicked(new Set(found.filter((m) => m.usable && !existing.includes(m.key)).map((m) => m.key)));
+    setPicked(
+      new Set(found.filter((m) => m.usable && !existing.includes(m.key)).map((m) => m.key)),
+    );
     if (!found.length) toast.error("No keys found in that text.");
   };
 
