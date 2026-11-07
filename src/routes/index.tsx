@@ -13,6 +13,7 @@ import { ControlDock } from "@/components/mural/ControlDock";
 import { CinematicReveal } from "@/components/mural/CinematicReveal";
 import { ProposalDialog } from "@/components/mural/ProposalDialog";
 import { OutlineDialog } from "@/components/mural/OutlineDialog";
+import { WalkthroughDialog } from "@/components/mural/WalkthroughDialog";
 
 import {
   ApiKeyField,
@@ -57,6 +58,7 @@ function MuralStudio() {
   const [revealOpen, setRevealOpen] = useState(false);
   const [proposalOpen, setProposalOpen] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
 
   const [retryNonce, setRetryNonce] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
@@ -309,6 +311,7 @@ function MuralStudio() {
             onReveal={() => setRevealOpen(true)}
             onProposal={() => setProposalOpen(true)}
             onOutline={() => setOutlineOpen(true)}
+            onVideo={() => setVideoOpen(true)}
             canOutline={Boolean(selectedMural?.imageUrl)}
             isGenerating={mutation.isPending}
             muralIds={muralIds}
@@ -345,6 +348,7 @@ function MuralStudio() {
         wallImageUrl={selectedMural?.wallUrl ?? wall}
         artworkImageUrls={filledArtworks}
       />
+      <WalkthroughDialog key={selectedMural?.imageUrl ?? "empty-video"} open={videoOpen} onOpenChange={setVideoOpen} imageUrl={selectedMural?.imageUrl ?? null} />
     </main>
   );
 }

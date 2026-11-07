@@ -1,4 +1,4 @@
-import { RefreshCw, Play, Crosshair, FileText, PenLine } from "lucide-react";
+import { RefreshCw, Play, Crosshair, FileText, PenLine, Film } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ interface Props {
   onReveal: () => void;
   onProposal: () => void;
   onOutline: () => void;
+  onVideo: () => void;
   canOutline: boolean;
   isGenerating: boolean;
   muralIds: string[];
@@ -25,6 +26,7 @@ export function ControlDock({
   onReveal,
   onProposal,
   onOutline,
+  onVideo,
   canOutline,
 
   isGenerating,
@@ -64,6 +66,7 @@ export function ControlDock({
       </div>
 
       <div className="flex flex-wrap gap-2">
+        <Button variant="outline" disabled={!canOutline || isGenerating} onClick={onVideo}><Film />Walk-through video</Button>
         <Button
           variant="outline"
           className="h-10"
