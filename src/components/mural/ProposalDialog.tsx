@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { FileText, Loader2, Palette, Sparkles } from "lucide-react";
+import { Copy, Download, FileText, Loader2, Mail, Palette, Share2, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { writePitchEmail } from "@/lib/pitch.functions";
+import { emailDraftBlob, mailtoDraft } from "@/lib/pitch";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { writeProposalCopy, buildPaintPlan, type PaintPlan } from "@/lib/ai-features.functions";
@@ -79,6 +82,11 @@ export function ProposalDialog({
   const [writing, setWriting] = useState(false);
   const [painting, setPainting] = useState(false);
   const [plan, setPlan] = useState<PaintPlan | null>(null);
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [recipient, setRecipient] = useState("");
+  const [subject, setSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const pitch = useServerFn(writePitchEmail);
   const writeCopy = useServerFn(writeProposalCopy);
   const paintPlan = useServerFn(buildPaintPlan);
 
@@ -134,6 +142,28 @@ export function ProposalDialog({
       (plan.notes ? `\n${plan.notes}` : "")
     : "";
 
+  const proposalBlob = () => {
+    if (!muralImageUrl) throw new Error("Select a mockup first");
+    return generateProposalPdf({ ...form, notes: notes + paintText, sceneName: sceneName ?? "Selected concept", muralImageUrl, wallImageUrl, artworkImageUrls });
+  };
+  const handleEmail = async () => {
+    if (!muralImageUrl) return;
+    setEmailBusy(true);
+    try {
+      const draft = await pitch({ data: { ...form, notes: notes.slice(0, 2000), muralImageUrl } });
+      setSubject(draft.subject); setEmailBody(draft.body);
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Could not write the email."); }
+    finally { setEmailBusy(false); }
+  };
+  const handleShare = async () => {
+    setBusy(true);
+    try {
+      const file = new File([await proposalBlob()], "mural-proposal.pdf", { type: "application/pdf" });
+      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: subject, text: emailBody });
+      else { downloadBlob(file, file.name); toast.info("PDF downloaded. Attach it to your email draft."); }
+    } catch (err) { if (!(err instanceof DOMException && err.name === "AbortError")) toast.error("Could not share the proposal. Download the PDF instead."); }
+    finally { setBusy(false); }
+  };
   const handleGenerate = async () => {
     if (!muralImageUrl) {
       toast.error("Select a mockup first");
@@ -141,14 +171,7 @@ export function ProposalDialog({
     }
     setBusy(true);
     try {
-      const blob = await generateProposalPdf({
-        ...form,
-        notes,
-        sceneName: sceneName ?? "Selected concept",
-        muralImageUrl,
-        wallImageUrl,
-        artworkImageUrls,
-      });
+      const blob = await proposalBlob();
       const slug =
         (form.projectTitle || form.clientName || "mural-proposal")
           .toLowerCase()
@@ -156,7 +179,6 @@ export function ProposalDialog({
           .replace(/^-|-$/g, "") || "mural-proposal";
       downloadBlob(blob, `${slug}.pdf`);
       toast.success("Proposal PDF generated");
-      onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not build the proposal");
     } finally {
@@ -166,7 +188,7 @@ export function ProposalDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl border-white/10 bg-[#0c0d10] text-white">
+      <DialogContent className="max-h-[90dvh] max-w-2xl overflow-y-auto border-border bg-background text-foreground">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl font-medium tracking-tight">
             Client Proposal
@@ -264,6 +286,25 @@ export function ProposalDialog({
           </div>
         )}
 
+        <section className="space-y-3 border-t border-border pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-medium">Client pitch email</h3>
+            <Button variant="outline" size="sm" onClick={handleEmail} disabled={emailBusy || !muralImageUrl}><Mail />{emailBusy ? "Writing…" : "Write pitch email"}</Button>
+          </div>
+          <Label htmlFor="pitch-recipient">Client email</Label>
+          <Input id="pitch-recipient" type="email" value={recipient} onChange={e => setRecipient(e.target.value)} placeholder="Client email address" />
+          {emailBody && <>
+            <Label htmlFor="pitch-subject">Subject</Label><Input id="pitch-subject" value={subject} onChange={e => setSubject(e.target.value)} />
+            <Label htmlFor="pitch-body">Email</Label><Textarea id="pitch-body" rows={8} value={emailBody} onChange={e => setEmailBody(e.target.value)} />
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={async () => { try { await navigator.clipboard.writeText(`${subject}\n\n${emailBody}`); toast.success("Email copied"); } catch { toast.error("Could not copy. Select the email text instead."); } }}><Copy />Copy</Button>
+              <Button variant="outline" size="sm" onClick={() => { window.location.href = mailtoDraft(recipient, subject, emailBody); }}><Mail />Open email</Button>
+              <Button variant="outline" size="sm" onClick={() => downloadBlob(emailDraftBlob(recipient, subject, emailBody), "mural-pitch.eml")}><Download />Save draft</Button>
+              <Button variant="outline" size="sm" disabled={busy} onClick={handleShare}><Share2 />Share with PDF</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Email drafts do not include attachments. Attach the downloaded PDF; sharing includes it where supported.</p>
+          </>}
+        </section>
         <DialogFooter>
           <button
             onClick={handleGenerate}

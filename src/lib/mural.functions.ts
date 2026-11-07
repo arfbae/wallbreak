@@ -294,6 +294,13 @@ export const generateMurals = createServerFn({ method: "POST" })
       throw new Error("No API key available. Add your own key or sign in to use the shared key.");
     }
 
+    // Explicit opt-in permits sending references to the official public Space.
+    // Reuse the caller's HF token; do not rotate tokens to evade ZeroGPU quotas.
+    if (data.hfSpaces) {
+      const hf = keys.find(k => k.provider === "huggingface");
+      if (hf) keys.unshift({ ...hf, provider: "hfspace", label: "official HF Space" });
+    }
+
     const meter = async <T extends { keyUsed?: string }>(results: T[]): Promise<T[]> => {
       if (!quotaUserId) return results;
       const used = results.filter((r) => r.keyUsed?.startsWith("server")).length;
