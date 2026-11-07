@@ -2,6 +2,12 @@
 
 Working through the audit findings one at a time.
 
+## Client pitches and free fallback options
+
+- [ ] Pitch email from selected mockup and investment, with editable draft and PDF sharing/download.
+- [ ] Credit-free walk-through video of the exact selected mockup.
+- [ ] Verify and connect compatible official Hugging Face Spaces with explicit upload consent, complete image preservation and bounded failure handling.
+
 ## Use the user's own AI keys
 
 - [ ] Store the provided keys as server secrets; route renders to Google Gemini and fal.ai (wall + artwork capable) when built-in credits run out; explain in the key box which key types work and where they're stored. Also try Hugging Face as an image service; explain Cloudinary only stores pictures.
