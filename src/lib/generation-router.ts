@@ -10,6 +10,7 @@
 // `MuralRequest`. Every attempt — on every model and every credential — sends
 // that same complete request. The router never degrades a mural request to a
 // text-only prompt.
+import { callHfSpace, spaceSupportsRequest } from "./hf-space";
 
 export type FailureKind =
   | "rate_limit"
@@ -36,13 +37,14 @@ export interface MuralRequest {
  * artwork images + instructions) and return an edited image. Text-only or
  * single-image services (Recraft, Cloudinary) are deliberately not here.
  */
-export type ProviderId = "lovable" | "google" | "fal" | "huggingface";
+export type ProviderId = "lovable" | "google" | "fal" | "huggingface" | "hfspace";
 
 export const PROVIDER_LABEL: Record<ProviderId, string> = {
   lovable: "Built-in AI",
   google: "Google Gemini",
   fal: "fal.ai",
   huggingface: "Hugging Face",
+  hfspace: "Hugging Face free Space",
 };
 
 /** Models per provider, best first. Each accepts several input images. */
@@ -57,6 +59,7 @@ export const PROVIDER_MODELS: Record<ProviderId, readonly string[]> = {
   fal: ["fal-ai/nano-banana-pro/edit", "fal-ai/nano-banana/edit"],
   // Hugging Face Inference Providers, routed to fal's multi-image Qwen editor.
   huggingface: ["fal-ai/qwen-image-edit-2509"],
+  hfspace: ["Qwen/Qwen-Image-Edit-2509"],
 };
 
 /** What to tell the user when a provider's account has no money on it. */
@@ -65,6 +68,7 @@ const PROVIDER_CREDITS_HINT: Record<ProviderId, string> = {
   google: "no image allowance — turn on billing in Google AI Studio",
   fal: "account needs a top-up",
   huggingface: "needs pre-paid credits",
+  hfspace: "free allowance unavailable",
 };
 
 /**
@@ -414,7 +418,7 @@ export function extractImage(provider: ProviderId, data: unknown): string | null
     const inline = img?.inlineData ?? img?.inline_data;
     return inline ? `data:${inline.mimeType ?? inline.mime_type ?? "image/png"};base64,${inline.data}` : null;
   }
-  if (provider === "fal" || provider === "huggingface") {
+  if (provider === "fal" || provider === "huggingface" || provider === "hfspace") {
     const url = d.images?.[0]?.url ?? d.image?.url;
     return typeof url === "string" && url ? url : null;
   }
@@ -463,7 +467,7 @@ export async function renderImageWithFailover(
   const attempts: AttemptLog[] = [];
   let lastFailure: FailureKind = "server";
 
-  const usable = resources.filter((r) => isUsable(r.id, now()));
+  const usable = resources.filter((r) => isUsable(r.id, now()) && (r.provider !== "hfspace" || spaceSupportsRequest(request.artworkDataUrls, request.wallDataUrl)));
   const plan = usable.length > 0 ? usable : [];
 
   if (plan.length === 0) {
@@ -489,11 +493,12 @@ export async function renderImageWithFailover(
       let imageUrl: string | null = null;
 
       try {
-        const { url, init } = buildProviderRequest(resource, request);
-        const res = await doFetch(url, {
-          ...init,
-          ...(deps.timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
-        });
+        const res = resource.provider === "hfspace"
+          ? await callHfSpace(orderedImages(request), request.prompt, resource.credential.key, doFetch)
+          : await (async () => {
+              const { url, init } = buildProviderRequest(resource, request);
+              return doFetch(url, { ...init, ...(deps.timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}) });
+            })();
         if (!res.ok) {
           const text = await res.text().catch(() => "");
           failure = classifyStatus(res.status, text);
@@ -531,7 +536,7 @@ export async function renderImageWithFailover(
 
       const transient =
         lastFailure === "timeout" || lastFailure === "server" || lastFailure === "network";
-      if (transient && attempt <= maxTransientRetries) {
+      if (transient && resource.provider !== "hfspace" && attempt <= maxTransientRetries) {
         // Bounded exponential backoff, then one more try on the same resource.
         await sleep(Math.min(4_000, 500 * 2 ** (attempt - 1)));
         continue;

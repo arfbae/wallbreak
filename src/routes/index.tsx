@@ -155,6 +155,7 @@ function MuralStudio() {
           variant,
           apiKeys: apiKeyState.keys,
           serverFallback: apiKeyState.serverFallback,
+          hfSpaces: apiKeyState.hfSpaces === true,
           mode,
           count,
           keepBackground,

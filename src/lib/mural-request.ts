@@ -12,6 +12,7 @@ export type RawMuralRequest = {
   apiKey?: string | null;
   apiKeys?: string[] | null;
   serverFallback?: boolean;
+  hfSpaces?: boolean;
   mode?: MuralMode;
   count?: number;
   keepBackground?: boolean;
@@ -25,6 +26,7 @@ export type MuralRequest = {
   variant: "base" | "retry";
   apiKeys: string[];
   serverFallback: boolean;
+  hfSpaces: boolean;
   mode: MuralMode;
   count: number;
   keepBackground: boolean;
@@ -100,6 +102,7 @@ export function normalizeMuralRequest(input: RawMuralRequest | null | undefined)
     variant: input.variant === "retry" ? "retry" : "base",
     apiKeys,
     serverFallback: input.serverFallback !== false,
+    hfSpaces: input.hfSpaces === true,
     mode,
     count,
     keepBackground: input.keepBackground === true,

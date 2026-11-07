@@ -3,6 +3,7 @@ import { Key, Eye, EyeOff, Check, Server, ClipboardPaste } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractKeys, maskKey, type KeyMatch } from "@/lib/key-extract";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const STORAGE_KEY = "mural.apiKeys";
 const FALLBACK_KEY = "mural.serverFallback";
@@ -10,6 +11,7 @@ const FALLBACK_KEY = "mural.serverFallback";
 export interface ApiKeyState {
   keys: string[];
   serverFallback: boolean;
+  hfSpaces?: boolean;
 }
 
 interface Props {
@@ -126,6 +128,14 @@ export function ApiKeyField({ value, onChange }: Props) {
               localStorage.setItem(STORAGE_KEY, JSON.stringify(keys));
             }}
           />
+          <label className="flex items-start gap-2 text-xs text-muted-foreground">
+            <Checkbox checked={value.hfSpaces === true} onCheckedChange={checked => {
+              const enabled = checked === true;
+              onChange({ ...value, hfSpaces: enabled });
+              localStorage.setItem("mural.hfSpaces", enabled ? "1" : "0");
+            }} />
+            <span>Use official Hugging Face free Space first (experimental). Uploads and full instructions are sent to Qwen’s public Space; deletion is not guaranteed. Shared daily GPU limits apply. Maximum 3 references including the wall; larger requests skip it. Uses your saved Hugging Face key.</span>
+          </label>
         </div>
       )}
     </div>
@@ -249,5 +259,5 @@ export function loadStoredApiKeyState(): ApiKeyState {
     /* ignore */
   }
   const fb = localStorage.getItem(FALLBACK_KEY);
-  return { keys, serverFallback: fb === null ? true : fb === "1" };
+  return { keys, serverFallback: fb === null ? true : fb === "1", hfSpaces: localStorage.getItem("mural.hfSpaces") === "1" };
 }
